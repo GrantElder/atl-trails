@@ -69,6 +69,18 @@ Possible tools for building routes on this network:
 
 To report missing trails or corrections in ARC data, contact [info@atlantaregional.org](mailto:info@atlantaregional.org).
 
+## Pushing to GitHub
+
+This repo is initialized with git. To create a GitHub repository and push:
+
+1. Create a new repository on [GitHub](https://github.com/new) (e.g. `atltrails`).
+2. Add the remote and push:
+   ```bash
+   git remote add origin https://github.com/YOUR_USERNAME/atltrails.git
+   git branch -M main
+   git push -u origin main
+   ```
+
 ## References
 
 - [ARC Bicycle & Pedestrian Planning](https://atlantaregional.org/what-we-do/transportation-planning/bicycle-pedestrian/)
