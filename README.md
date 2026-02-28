@@ -1,34 +1,101 @@
-# Atlanta Trails — Route Planning
+# Atlanta Trails — Urban Exploring & Walking
 
-A project for planning bike, pedestrian, and trail routes in the Atlanta metro region using open data from the Atlanta Regional Commission (ARC).
+A hobby project for Atlanta urban exploring: find trails, record walks on iOS, sync with fitness apps, and use **this GitHub repo as the source of truth**. Host a portal, blog, and personal updates—photos, maps, and routes—to promote being outdoors, multiuse trails, urban exploring, and Atlanta neighborhoods.
 
-## Data Sources
+---
 
-### Primary: Regional Bike, Ped, Trail Inventory (2024)
+## The Workflow
 
-**Source:** [Atlanta Regional Commission Open Data](https://opendata.atlantaregional.com/maps/91ef2026b59f4d8b911cb1119e671909/about)
+1. **Find a trail** — e.g., Midtown → Stone Mountain, or pick neighborhoods to explore
+2. **Start fitness tracker** — Record on iPhone (Apple Workout, Strava, or GPS app)
+3. **Explore** — Walk with loose goals: follow a trail, wander neighborhoods, or improvise
+4. **Sync when home** — Push to Strava, Apple Health, and other fitness apps
+5. **Archive here** — Export GPX/FIT, add to this repo, optionally with photos or notes
+6. **Share** — Portal, blog, and updates from the repo
 
-- **Dataset:** Regional Bike, Ped, Trail Inventory (2024)
-- **License:** Open data; suitable for route planning and analysis
-- **Coverage:** Metro Atlanta region
-- **Format:** ArcGIS feature service (queryable via REST API)
-- **Use case:** Primary source for bike lanes, shared-use paths, side paths, paved multi-use trails, and pedestrian facilities
+---
 
-### Alternative: ARC GeoJSON Repository
+## Source of Truth: This Repository
 
-**Source:** [atlregional/aris](https://github.com/atlregional/aris) on GitHub
+- **Activities** — GPX/FIT files, route metadata
+- **Content** — Photos, maps, writeups for interesting explorations
+- **Updates** — Blog posts, personal notes, neighborhood highlights
 
-- **Dataset:** `Bike_Facility_Inventory_new.geojson`
-- **License:** Open (GitHub repository)
-- **Format:** GeoJSON — directly usable in most mapping and routing tools
-- **Note:** May be older than the 2024 inventory; useful for offline use and quick prototyping
+Fitness apps (Strava, Apple Health, etc.) sync for daily use; this repo is the long-term archive and public record.
 
-### Not Used: Regional Bike and Trail Inventory (2025)
+---
 
-**Source:** [GARC 2025 Inventory](https://opendata.atlantaregional.com/maps/GARC::regional-bike-and-trail-inventory-2025/about)
+## Project Vision
 
-- **Status:** Not downloadable; license or terms are not permissive for this project
-- **Note:** Monitor for future open release
+- **Urban exploring** — Walk and document routes across Atlanta
+- **Loose goals** — Choose a trail or neighborhood, then explore freely
+- **Promote** — Outdoors, multiuse trails, urban exploring, Atlanta neighborhoods
+- **Hobby** — Personal project, shared publicly
+- **Portal & blog** — Hosted site for updates, photos, maps, and route highlights
+
+---
+
+## Trail Discovery
+
+**Source:** [Regional Bike, Ped, Trail Inventory (2024)](https://opendata.atlantaregional.com/maps/91ef2026b59f4d8b911cb1119e671909/about)
+
+**Interactive map:** [ARC Bike-Ped Mapping Tool](https://garc.maps.arcgis.com/apps/webappviewer/index.html?id=ac9b81cce02741d98e967afff3c247f9)
+
+Use to find:
+- Shared-use paths, side paths, bike lanes, paved multi-use trails
+- Filter by type, location, length; toggle existing vs planned
+- Example routes: Midtown → Stone Mountain, BeltLine segments, neighborhood loops
+
+---
+
+## iOS Recording & Sync
+
+### Recording on iPhone
+
+| Option | How | Export |
+|--------|-----|--------|
+| **Apple Workout** | Built-in; start "Outdoor Walk" | Via HealthKit → GpxExport, WorkoutExporter, or TrailSync |
+| **Strava** | Record in Strava app | Syncs to Strava; export GPX via strava2gpx / GPXBridge |
+| **iOS Open GPX Tracker** | [GitHub](https://github.com/knorfield/iOS-Open-GPX-Tracker-1) | Direct GPX export |
+
+### Export from Apple Health / Workouts
+
+| Tool | Purpose |
+|------|---------|
+| [GpxExport](https://github.com/pilif/GpxExport) | HealthKit workouts → GPX |
+| [WorkoutExporter](https://github.com/WorkoutExporter/WorkoutExporter) | Apple Watch workouts → shareable files |
+| [TrailSync](https://github.com/matvdg/TrailSync) | Health → GPX, merge tracks, sync across devices |
+
+### Sync When Home
+
+1. Workout finishes → syncs to Apple Health (automatic)
+2. Strava: record in Strava, or import from Health via Strava
+3. Export GPX/FIT → save to `activities/` in this repo
+4. Optional: CubeTrek, Viking, or similar for visualization
+
+---
+
+## Website
+
+**Stack:** [Eleventy](https://www.11ty.dev/) — open source static site generator. Markdown → HTML. One layout, extensible.
+
+### Build & Run
+
+```bash
+npm install
+npm run build    # Output to docs/
+npm start       # Dev server with live reload
+```
+
+### Deploy to GitHub Pages (Free)
+
+1. Push this repo to GitHub (see [GitHub Publishing](#github-publishing) below).
+2. Run `npm run build` before pushing (or use a GitHub Action to build on push).
+3. **Settings** → **Pages** → **Source**: Deploy from branch
+4. **Branch**: `main` · **Folder**: `/docs` · **Save**
+5. Site: `https://YOUR_USERNAME.github.io/atltrails/`
+
+For project-site URLs, set `PATH_PREFIX=/atltrails` when building, or add to `eleventy.config.js`.
 
 ---
 
@@ -36,53 +103,58 @@ A project for planning bike, pedestrian, and trail routes in the Atlanta metro r
 
 ```
 atltrails/
-├── README.md           # This file
-├── data/               # Cached or derived data (add to .gitignore if large)
-├── scripts/            # Data fetch, processing, routing scripts
-└── docs/               # Additional documentation
+├── README.md
+├── activities/         # GPX/FIT files, route metadata (source of truth)
+├── content/            # Photos, maps, writeups for interesting explorations
+├── blog/               # Blog posts, updates (or use docs/)
+├── data/               # Cached trail data, scripts output
+├── scripts/            # Fetch, convert, sync scripts
+├── docs/               # Website (index, march, trails) + ARCHITECTURE.md
 ```
 
-## Accessing the 2024 Data
+---
 
-The 2024 inventory is hosted on ArcGIS Open Data. You can:
+## File Formats
 
-1. **Interactive map:** Use the [Regional Bike-Ped Mapping Tool](https://garc.maps.arcgis.com/apps/webappviewer/index.html?id=ac9b81cce02741d98e967afff3c247f9) to explore existing and planned facilities.
+- **GPX** — Universal; CubeTrek, most tools, GitHub-friendly
+- **FIT** — Garmin/Strava; convert with [fit2gpx](https://fit2gpx.readthedocs.io/) if needed
 
-2. **REST API:** Query the feature service with `f=geojson` for GeoJSON output. Example pattern:
-   ```
-   https://opendata.atlantaregional.com/api/.../query?where=1%3D1&outFields=*&f=geojson
-   ```
-   (Exact endpoint may vary; check the map’s “API” or “Developer” links.)
+---
 
-3. **ArcGIS API for Python:** Use `arcgis.features.FeatureLayer` to query and export to GeoJSON or other formats.
+## Open Source Tools Reference
 
-## Route Planning Tools
+| Category | Tools |
+|----------|-------|
+| **iOS recording** | Apple Workout, Strava, [iOS Open GPX Tracker](https://github.com/knorfield/iOS-Open-GPX-Tracker-1) |
+| **HealthKit export** | [GpxExport](https://github.com/pilif/GpxExport), [WorkoutExporter](https://github.com/WorkoutExporter/WorkoutExporter), [TrailSync](https://github.com/matvdg/TrailSync) |
+| **Strava → GPX** | [GPXBridge](https://github.com/dreamiurg/gpxbridge), [strava2gpx](https://github.com/jime567/strava2gpx) |
+| **Visualization** | [CubeTrek](https://cubetrek.com/), [Viking](https://github.com/viking-gps/viking) |
 
-Possible tools for building routes on this network:
+---
 
-- **OSRM** — Open Source Routing Machine (bike/ped profiles)
-- **GraphHopper** — Routing engine with bike and pedestrian support
-- **OSMnx** — Python library for street network analysis (can incorporate bike/ped layers)
-- **QGIS** — Desktop GIS for network analysis and visualization
+## GitHub Publishing
 
-## Contributing
+### First-time push
 
-To report missing trails or corrections in ARC data, contact [info@atlantaregional.org](mailto:info@atlantaregional.org).
-
-## Pushing to GitHub
-
-This repo is initialized with git. To create a GitHub repository and push:
-
-1. Create a new repository on [GitHub](https://github.com/new) (e.g. `atltrails`).
-2. Add the remote and push:
-   ```bash
+1. Create repo at [github.com/new](https://github.com/new) (e.g. `atltrails`)
+2. Push:
+   ```powershell
+   cd "c:\Users\Grant Elder\Documents\atltrails"
    git remote add origin https://github.com/YOUR_USERNAME/atltrails.git
    git branch -M main
    git push -u origin main
    ```
 
+### Ongoing
+
+- Add activities: `git add activities/*.gpx` → commit → push
+- Add content: photos, maps, blog posts → commit → push
+- Portal: edit `src/*.md` → `npm run build` → push → GitHub Pages serves `docs/`
+
+---
+
 ## References
 
-- [ARC Bicycle & Pedestrian Planning](https://atlantaregional.org/what-we-do/transportation-planning/bicycle-pedestrian/)
-- [Regional Bike-Ped Mapping Tool](https://atlantaregional.org/whats-next-atl/articles/regional-bike-ped-mapping-tool-makes-it-easy-to-find-the-nearest-path-and-whats-to-come/)
+- [ARC Bike-Ped Mapping Tool](https://garc.maps.arcgis.com/apps/webappviewer/index.html?id=ac9b81cce02741d98e967afff3c247f9)
 - [ARC Open Data (2024 Inventory)](https://opendata.atlantaregional.com/maps/91ef2026b59f4d8b911cb1119e671909/about)
+- [CubeTrek](https://cubetrek.com/) — GPX/FIT visualization

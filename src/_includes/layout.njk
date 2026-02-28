@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if title %}{{ title }} — {% endif %}Atlanta Trails</title>
+  <link rel="stylesheet" href="{{ '/css/style.css' | url }}">
+</head>
+<body>
+  <main>
+    <header>
+      <h1><a href="{{ '/' | url }}">Atlanta Trails</a></h1>
+      <p class="subtitle">Urban exploring, walking, and journalling in Atlanta</p>
+      <nav>
+        <a href="{{ '/' | url }}"{% if page.url == '/' or page.url == '/index.html' %} class="active"{% endif %}>Purpose</a>
+        <a href="{{ '/march/' | url }}"{% if '/march/' in page.url %} class="active"{% endif %}>March Plans</a>
+        <a href="{{ '/trails/' | url }}"{% if '/trails/' in page.url %} class="active"{% endif %}>Trails</a>
+      </nav>
+    </header>
+
+    {{ content | safe }}
+
+    <footer>
+        <a href="https://github.com/GrantElder/atl-trails">Source of truth: GitHub</a> · <a href="https://www.11ty.dev/">Eleventy</a> · No tracking
+    </footer>
+  </main>
+</body>
+</html>

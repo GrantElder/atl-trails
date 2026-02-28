@@ -2,6 +2,9 @@
 # data/*.geojson
 # data/*.shp
 
+# Node
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]

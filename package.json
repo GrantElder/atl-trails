@@ -1,0 +1,12 @@
+{
+  "name": "atltrails",
+  "version": "1.0.0",
+  "description": "Atlanta urban exploring, walking, journalling",
+  "scripts": {
+    "build": "eleventy",
+    "start": "eleventy --serve"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.0.0"
+  }
+}
