@@ -2,6 +2,8 @@
 
 A hobby project for Atlanta urban exploring: find trails, record walks on iOS, sync with fitness apps, and use **this GitHub repo as the source of truth**. Host a portal, blog, and personal updates—photos, maps, and routes—to promote being outdoors, multiuse trails, urban exploring, and Atlanta neighborhoods.
 
+**Live site:** [trails.grantelder.com](https://trails.grantelder.com)
+
 ---
 
 ## The Workflow
@@ -16,7 +18,6 @@ A hobby project for Atlanta urban exploring: find trails, record walks on iOS, s
 ---
 
 ## Source of Truth: This Repository
-Published at trails.grantelder.com
 
 - **Activities** — GPX/FIT files, route metadata
 - **Content** — Photos, maps, writeups for interesting explorations
@@ -78,6 +79,8 @@ Use to find:
 
 ## Website
 
+**Live:** [trails.grantelder.com](https://trails.grantelder.com)
+
 **Stack:** [Eleventy](https://www.11ty.dev/) — open source static site generator. Markdown → HTML. One layout, extensible.
 
 ### Build & Run
@@ -94,9 +97,9 @@ npm start       # Dev server with live reload
 
 1. **Settings** → **Pages** → **Build and deployment**
 2. **Source:** Select **GitHub Actions**
-3. Site: `https://grantelder.github.io/atl-trails/` (or custom domain below)
+3. Site: **https://trails.grantelder.com** (also at `grantelder.github.io/atl-trails`)
 
-### Custom Domain: trails.grantelder.com
+### Custom Domain: trails.grantelder.com ✓
 
 1. **Settings** → **Pages** → **Custom domain**: enter `trails.grantelder.com` → **Save**
 2. **DNS** (at your domain registrar): Add a CNAME record:
@@ -163,6 +166,7 @@ atltrails/
 
 ## References
 
+- [trails.grantelder.com](https://trails.grantelder.com) — Live site
 - [ARC Bike-Ped Mapping Tool](https://garc.maps.arcgis.com/apps/webappviewer/index.html?id=ac9b81cce02741d98e967afff3c247f9)
 - [ARC Open Data (2024 Inventory)](https://opendata.atlantaregional.com/maps/91ef2026b59f4d8b911cb1119e671909/about)
 - [CubeTrek](https://cubetrek.com/) — GPX/FIT visualization
