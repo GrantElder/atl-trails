@@ -89,13 +89,20 @@ npm start       # Dev server with live reload
 
 ### Deploy to GitHub Pages (Free)
 
-1. Push this repo to GitHub (see [GitHub Publishing](#github-publishing) below).
-2. Run `npm run build` before pushing (or use a GitHub Action to build on push).
-3. **Settings** → **Pages** → **Source**: Deploy from branch
-4. **Branch**: `main` · **Folder**: `/docs` · **Save**
-5. Site: `https://YOUR_USERNAME.github.io/atltrails/`
+**Automated:** Push to `main` triggers the GitHub Actions workflow. Build runs on GitHub; no local Node required.
 
-For project-site URLs, set `PATH_PREFIX=/atltrails` when building, or add to `eleventy.config.js`.
+1. **Settings** → **Pages** → **Build and deployment**
+2. **Source:** Select **GitHub Actions**
+3. Site: `https://grantelder.github.io/atl-trails/` (or custom domain below)
+
+### Custom Domain: trails.grantelder.com
+
+1. **Settings** → **Pages** → **Custom domain**: enter `trails.grantelder.com` → **Save**
+2. **DNS** (at your domain registrar): Add a CNAME record:
+   - **Name:** `trails` (or `trails.grantelder.com` depending on provider)
+   - **Value:** `GrantElder.github.io`
+3. Wait for DNS propagation (minutes to hours). GitHub will show a green check when ready.
+4. Optionally enable **Enforce HTTPS**.
 
 ---
 
