@@ -13,8 +13,8 @@
       <p class="subtitle">Urban exploring, walking, and journalling in Atlanta</p>
       <nav>
         <a href="{{ '/' | url }}"{% if page.url == '/' or page.url == '/index.html' %} class="active"{% endif %}>Purpose</a>
-        <a href="{{ '/march/' | url }}"{% if '/march/' in page.url %} class="active"{% endif %}>March Plans</a>
-        <a href="{{ '/trails/' | url }}"{% if '/trails/' in page.url %} class="active"{% endif %}>Trails</a>
+        <a href="{{ '/march/' | url }}"{% if page.url == '/march/' or page.url == '/march/index.html' %} class="active"{% endif %}>March Plans</a>
+        <a href="{{ '/trails/' | url }}"{% if page.url == '/trails/' or page.url == '/trails/index.html' %} class="active"{% endif %}>Trails</a>
       </nav>
     </header>
 
