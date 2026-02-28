@@ -16,6 +16,7 @@ A hobby project for Atlanta urban exploring: find trails, record walks on iOS, s
 ---
 
 ## Source of Truth: This Repository
+Published at trails.grantelder.com
 
 - **Activities** — GPX/FIT files, route metadata
 - **Content** — Photos, maps, writeups for interesting explorations
