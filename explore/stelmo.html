@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chattanooga roads · boundary explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink: #1c241c;
+      --moss: #2f4a34;
+      --leaf: #5f8a4b;
+      --clay: #c46a3a;
+      --chalk: #f3efe6;
+      --panel: rgba(243, 239, 230, 0.92);
+      --line: rgba(28, 36, 28, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #c8d6b8 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #e8c9a8 0%, transparent 50%),
+        linear-gradient(165deg, #eef2e8, #dfe6d6 45%, #cfd8c4);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+      min-height: 100dvh;
+    }
+
+    header {
+      padding: 1.1rem 1.25rem 0.85rem;
+      animation: rise 0.7s ease both;
+    }
+
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      margin: 0;
+    }
+
+    .brand span { color: var(--moss); }
+
+    .lede {
+      margin: 0.45rem 0 0;
+      max-width: 44rem;
+      color: rgba(28, 36, 28, 0.78);
+      font-size: 0.98rem;
+      line-height: 1.45;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 0.85rem;
+      padding: 0 1rem 1rem;
+      min-height: 0;
+      animation: rise 0.85s 0.08s ease both;
+    }
+
+    @media (max-width: 860px) {
+      .stage {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.9rem 1rem 1rem;
+      overflow: auto;
+      backdrop-filter: blur(8px);
+    }
+
+    .panel h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.05rem;
+      margin: 0.85rem 0 0.45rem;
+    }
+    .panel h2:first-child { margin-top: 0; }
+
+    .field {
+      display: grid;
+      gap: 0.28rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .field label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: rgba(28, 36, 28, 0.62);
+    }
+
+    select {
+      font: inherit;
+      font-size: 0.92rem;
+      padding: 0.48rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      max-width: 100%;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.35rem 0 0.75rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.28rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(47, 74, 52, 0.1);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .toggles {
+      display: grid;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    label.toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    label.toggle input { accent-color: var(--moss); }
+
+    .swatch {
+      width: 1.1rem;
+      height: 0.35rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .swatch.poly {
+      height: 0.75rem;
+      width: 0.9rem;
+      border: 1px solid rgba(0,0,0,0.25);
+      opacity: 0.85;
+    }
+
+    .api-block p {
+      margin: 0 0 0.35rem;
+      font-size: 0.8rem;
+      color: rgba(28, 36, 28, 0.7);
+    }
+
+    .api-block code,
+    #detail {
+      display: block;
+      width: 100%;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.68rem;
+      line-height: 1.4;
+      background: rgba(28, 36, 28, 0.06);
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid var(--line);
+    }
+
+    #detail {
+      min-height: 4.5rem;
+      margin-top: 0.45rem;
+      color: var(--ink);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 0.55rem 0 0.65rem;
+    }
+
+    button {
+      font: inherit;
+      font-weight: 560;
+      font-size: 0.86rem;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.48rem 0.9rem;
+      cursor: pointer;
+      background: var(--moss);
+      color: var(--chalk);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    button:hover { background: #243a28; transform: translateY(-1px); }
+    button.secondary {
+      background: transparent;
+      color: var(--moss);
+      border: 1px solid rgba(47, 74, 52, 0.35);
+    }
+    button:disabled { opacity: 0.55; cursor: wait; transform: none; }
+
+    #status {
+      font-size: 0.82rem;
+      color: rgba(28, 36, 28, 0.72);
+      min-height: 1.2em;
+    }
+    #status.error { color: #8a2f1f; }
+
+    .map-wrap {
+      position: relative;
+      min-height: 420px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(28, 36, 28, 0.12);
+    }
+
+    #map { height: 100%; min-height: 420px; }
+    .leaflet-container { background: #d5ddd0; font: inherit; }
+
+    .note {
+      margin: 0.85rem 0 0;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: rgba(28, 36, 28, 0.65);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1 class="brand">Chattanooga <span id="brand-place">roads</span></h1>
+      <p class="lede">Pick a historic district, neighborhood association, or ZIP — then load road centerlines and alley / right-of-way polygons clipped to that boundary.</p>
+    </header>
+
+    <div class="stage">
+      <aside class="panel">
+        <h2>Boundary</h2>
+        <div class="field">
+          <label for="bound-type">Type</label>
+          <select id="bound-type">
+            <option value="historic-local">Historic district (local)</option>
+            <option value="historic-national">Historic district (national)</option>
+            <option value="neighborhood">Neighborhood association</option>
+            <option value="zip">ZIP code</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bound-area">Area</label>
+          <select id="bound-area"></select>
+        </div>
+
+        <div class="actions">
+          <button id="btn-load" type="button">Load area</button>
+          <button id="btn-copy" class="secondary" type="button">Copy roads URL</button>
+        </div>
+        <div id="status">Choose a boundary, then load.</div>
+
+        <h2>Layers</h2>
+        <div class="meta">
+          <span class="chip">Roads <strong id="n-roads">—</strong></span>
+          <span class="chip">Alleys / ROW <strong id="n-alleys">—</strong></span>
+        </div>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="tog-roads" checked /><span class="swatch" style="background:#2f4a34"></span> Roadways</label>
+          <label class="toggle"><input type="checkbox" id="tog-major" checked /><span class="swatch" style="background:#c46a3a;height:0.45rem"></span> Major / collectors</label>
+          <label class="toggle"><input type="checkbox" id="tog-local" checked /><span class="swatch" style="background:#6b7d68"></span> Local streets</label>
+          <label class="toggle"><input type="checkbox" id="tog-alleys" checked /><span class="swatch poly" style="background:#5f8a4b"></span> Open alleys / ROW</label>
+          <label class="toggle"><input type="checkbox" id="tog-unopen" checked /><span class="swatch poly" style="background:#a84b3c"></span> Unopen alleys</label>
+          <label class="toggle"><input type="checkbox" id="tog-closed" /><span class="swatch poly" style="background:#222"></span> Closed / temp use</label>
+          <label class="toggle"><input type="checkbox" id="tog-bound" checked /><span class="swatch" style="background:transparent;border:2px solid #2f6b3a;height:0.7rem"></span> Boundary outline</label>
+        </div>
+
+        <div class="api-block">
+          <h2>API request (roads)</h2>
+          <p>City Roadways FeatureServer, clipped to the selected polygon.</p>
+          <code id="roads-url">(load an area first)</code>
+        </div>
+
+        <div class="api-block">
+          <h2>Selected feature</h2>
+          <pre id="detail">Click a road or alley on the map.</pre>
+        </div>
+
+        <p class="note">
+          Basemap: OpenStreetMap. Road / alley data: City of Chattanooga &amp; Hamilton County GIS.
+          Historic districts come from Hamilton Live_Chatt; neighborhood associations from ChattaData (2025).
+        </p>
+      </aside>
+
+      <div class="map-wrap">
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const BOUNDARIES = {
+      "historic-local": {
+        label: "Historic district (local)",
+        listUrl: "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/Live_Chatt/MapServer/18/query",
+        nameField: "DISTRICT",
+        defaults: ["St. Elmo"],
+        preferJson: true
+      },
+      "historic-national": {
+        label: "Historic district (national)",
+        listUrl: "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/Live_Chatt/MapServer/19/query",
+        nameField: "DISTRICT",
+        defaults: ["St. Elmo"],
+        preferJson: true
+      },
+      neighborhood: {
+        label: "Neighborhood association",
+        listUrl: "https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/Chattanooga_Neighborhood_Associations_2025/FeatureServer/1/query",
+        nameField: "name",
+        defaults: ["Community Association of Historic St. Elmo"],
+        preferJson: false
+      },
+      zip: {
+        label: "ZIP code",
+        listUrl: "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/Live_Chatt/MapServer/17/query",
+        nameField: "ZIPCODE",
+        defaults: ["37409"],
+        preferJson: true
+      }
+    };
+
+    const ROADS_URL =
+      "https://pwgis.chattanooga.gov/server/rest/services/HC_Base/Block_lc/FeatureServer/0/query";
+    const ALLEYS_URL =
+      "https://pwgis.chattanooga.gov/arcgis/rest/services/Transportation/Alleyways/MapServer/0/query";
+
+    const typeEl = document.getElementById("bound-type");
+    const areaEl = document.getElementById("bound-area");
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("btn-load");
+    const brandPlace = document.getElementById("brand-place");
+    const roadsUrlEl = document.getElementById("roads-url");
+
+    let lastRoadsUrl = "";
+    let areaCache = {}; // type -> [{value,label}]
+    let activeBoundaryGeom = null; // { rings, spatialReference }
+
+    const map = L.map("map", { zoomControl: true }).setView([34.995, -85.329], 14);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(map);
+
+    const layers = {
+      bound: L.geoJSON(null, {
+        style: {
+          color: "#2f6b3a",
+          weight: 2.5,
+          dashArray: "6 5",
+          fillColor: "#5f8a4b",
+          fillOpacity: 0.06
+        }
+      }),
+      major: L.geoJSON(null, {
+        style: () => ({ color: "#c46a3a", weight: 4, opacity: 0.95 }),
+        onEachFeature
+      }),
+      local: L.geoJSON(null, {
+        style: () => ({ color: "#6b7d68", weight: 2.2, opacity: 0.9 }),
+        onEachFeature
+      }),
+      open: L.geoJSON(null, {
+        style: () => ({ color: "#2f4a34", weight: 1, fillColor: "#5f8a4b", fillOpacity: 0.45 }),
+        onEachFeature
+      }),
+      unopen: L.geoJSON(null, {
+        style: () => ({ color: "#5a2018", weight: 1, fillColor: "#a84b3c", fillOpacity: 0.5 }),
+        onEachFeature
+      }),
+      closed: L.geoJSON(null, {
+        style: (f) => {
+          const s = (f.properties.STATUS || "").toUpperCase();
+          if (s === "TEMPUSE") return { color: "#7a6a20", weight: 1, fillColor: "#d4c35a", fillOpacity: 0.5 };
+          return { color: "#111", weight: 1, fillColor: "#222", fillOpacity: 0.55 };
+        },
+        onEachFeature
+      })
+    };
+
+    function onEachFeature(feature, layer) {
+      const p = feature.properties || {};
+      layer.on("click", () => {
+        document.getElementById("detail").textContent = JSON.stringify(p, null, 2);
+      });
+      const name = p.FullName || p.Name || p.NAME_PDF || p.DESCRIPTIO || p.STATUS || "";
+      if (name) layer.bindTooltip(name, { sticky: true, opacity: 0.92 });
+    }
+
+    function sqlQuote(s) {
+      return "'" + String(s).replace(/'/g, "''") + "'";
+    }
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    async function fetchJson(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      return data;
+    }
+
+    function esriToGeoJSON(esri) {
+      const features = (esri.features || []).map((feat) => {
+        const g = feat.geometry;
+        if (!g) return null;
+        let geometry = null;
+        if (g.rings) {
+          geometry = { type: "Polygon", coordinates: g.rings };
+        } else if (g.paths) {
+          geometry = g.paths.length > 1
+            ? { type: "MultiLineString", coordinates: g.paths }
+            : { type: "LineString", coordinates: g.paths[0] };
+        }
+        if (!geometry) return null;
+        return { type: "Feature", properties: feat.attributes || {}, geometry };
+      }).filter(Boolean);
+      return { type: "FeatureCollection", features };
+    }
+
+    function isMajor(props) {
+      const ft = (props.FeatureType || "").toLowerCase();
+      const fc = (props.FunctClass || "").toLowerCase();
+      if (ft.includes("major")) return true;
+      if (fc.includes("local")) return false;
+      return Boolean(fc);
+    }
+
+    async function loadAreaList(type) {
+      if (areaCache[type]) return areaCache[type];
+      const cfg = BOUNDARIES[type];
+      const params = new URLSearchParams({
+        where: "1=1",
+        outFields: cfg.nameField,
+        returnGeometry: "false",
+        returnDistinctValues: "true",
+        orderByFields: cfg.nameField,
+        resultRecordCount: "2000",
+        f: "json"
+      });
+      const data = await fetchJson(`${cfg.listUrl}?${params}`);
+      const names = [...new Set(
+        (data.features || [])
+          .map((f) => f.attributes && f.attributes[cfg.nameField])
+          .filter((v) => v != null && String(v).trim() !== "")
+          .map(String)
+      )].sort((a, b) => a.localeCompare(b));
+      areaCache[type] = names.map((n) => ({ value: n, label: n }));
+      return areaCache[type];
+    }
+
+    async function populateAreas(preferDefault = true) {
+      const type = typeEl.value;
+      areaEl.disabled = true;
+      areaEl.innerHTML = "<option>Loading…</option>";
+      try {
+        const items = await loadAreaList(type);
+        areaEl.innerHTML = "";
+        for (const item of items) {
+          const opt = document.createElement("option");
+          opt.value = item.value;
+          opt.textContent = item.label;
+          areaEl.appendChild(opt);
+        }
+        if (preferDefault) {
+          const defaults = BOUNDARIES[type].defaults || [];
+          const match = defaults.find((d) => items.some((i) => i.value === d));
+          if (match) areaEl.value = match;
+        }
+        areaEl.disabled = false;
+      } catch (err) {
+        areaEl.innerHTML = "<option>(failed to load)</option>";
+        setStatus(`Could not list areas: ${err.message}`, true);
+      }
+    }
+
+    async function fetchBoundaryFeature(type, name) {
+      const cfg = BOUNDARIES[type];
+      const params = new URLSearchParams({
+        where: `${cfg.nameField}=${sqlQuote(name)}`,
+        outFields: "*",
+        outSR: "4326",
+        returnGeometry: "true",
+        f: "json"
+      });
+      const data = await fetchJson(`${cfg.listUrl}?${params}`);
+      if (!data.features || !data.features.length) {
+        throw new Error(`No boundary geometry for ${name}`);
+      }
+      return data.features[0];
+    }
+
+    function buildClipQuery(geometry) {
+      const geom = {
+        rings: geometry.rings,
+        spatialReference: { wkid: 4326 }
+      };
+      return new URLSearchParams({
+        where: "1=1",
+        geometry: JSON.stringify(geom),
+        geometryType: "esriGeometryPolygon",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "*",
+        outSR: "4326",
+        returnGeometry: "true",
+        f: "geojson"
+      });
+    }
+
+    function clearDataLayers() {
+      Object.values(layers).forEach((l) => l.clearLayers());
+    }
+
+    async function loadArea() {
+      const type = typeEl.value;
+      const name = areaEl.value;
+      if (!name || name.startsWith("(")) {
+        setStatus("Pick an area first.", true);
+        return;
+      }
+
+      btn.disabled = true;
+      brandPlace.textContent = name;
+      setStatus(`Loading boundary “${name}”…`);
+      clearDataLayers();
+      activeBoundaryGeom = null;
+      lastRoadsUrl = "";
+      roadsUrlEl.textContent = "(loading…)";
+
+      try {
+        const feat = await fetchBoundaryFeature(type, name);
+        if (!feat.geometry || !feat.geometry.rings) {
+          throw new Error("Boundary has no polygon rings");
+        }
+        activeBoundaryGeom = feat.geometry;
+
+        const boundFc = esriToGeoJSON({ features: [feat] });
+        layers.bound.addData(boundFc);
+
+        const roadParams = buildClipQuery(activeBoundaryGeom);
+        // Slimmer outFields for roads
+        roadParams.set(
+          "outFields",
+          "FullName,FunctClass,FeatureType,StreetStatus,Ownership,Name"
+        );
+        lastRoadsUrl = `${ROADS_URL}?${roadParams}`;
+        roadsUrlEl.textContent = lastRoadsUrl;
+
+        const alleyParams = buildClipQuery(activeBoundaryGeom);
+        alleyParams.set("outFields", "STATUS,DESCRIPTIO,FROM_,TO_,NAME_PDF,EXISTS_");
+
+        setStatus("Fetching roads and alleys inside boundary…");
+        const [roadsFc, alleysFc] = await Promise.all([
+          fetchJson(lastRoadsUrl),
+          fetchJson(`${ALLEYS_URL}?${alleyParams}`)
+        ]);
+
+        let majorN = 0, localN = 0;
+        for (const f of roadsFc.features || []) {
+          if (isMajor(f.properties || {})) {
+            layers.major.addData(f);
+            majorN++;
+          } else {
+            layers.local.addData(f);
+            localN++;
+          }
+        }
+        document.getElementById("n-roads").textContent = String(majorN + localN);
+
+        let openN = 0, unopenN = 0, closedN = 0;
+        for (const f of alleysFc.features || []) {
+          const s = String((f.properties && f.properties.STATUS) || "").toUpperCase();
+          if (s === "OPEN") { layers.open.addData(f); openN++; }
+          else if (s === "UNOPEN") { layers.unopen.addData(f); unopenN++; }
+          else { layers.closed.addData(f); closedN++; }
+        }
+        document.getElementById("n-alleys").textContent = String(openN + unopenN + closedN);
+
+        applyToggles();
+        const bounds = L.featureGroup(
+          Object.values(layers).filter((l) => l.getLayers().length)
+        ).getBounds();
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [28, 28] });
+
+        setStatus(
+          `${name}: ${majorN + localN} road segments · ${openN} open / ${unopenN} unopen / ${closedN} other ROW.`
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus(`Load failed: ${err.message}`, true);
+        roadsUrlEl.textContent = "(failed)";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function applyToggles() {
+      const want = {
+        roads: document.getElementById("tog-roads").checked,
+        major: document.getElementById("tog-major").checked,
+        local: document.getElementById("tog-local").checked,
+        alleys: document.getElementById("tog-alleys").checked,
+        unopen: document.getElementById("tog-unopen").checked,
+        closed: document.getElementById("tog-closed").checked,
+        bound: document.getElementById("tog-bound").checked
+      };
+      const sync = (layer, on) => {
+        if (on && !map.hasLayer(layer)) layer.addTo(map);
+        if (!on && map.hasLayer(layer)) map.removeLayer(layer);
+      };
+      sync(layers.bound, want.bound);
+      sync(layers.major, want.roads && want.major);
+      sync(layers.local, want.roads && want.local);
+      sync(layers.open, want.alleys);
+      sync(layers.unopen, want.unopen);
+      sync(layers.closed, want.closed);
+    }
+
+    document.querySelectorAll(".toggles input").forEach((el) => {
+      el.addEventListener("change", applyToggles);
+    });
+
+    typeEl.addEventListener("change", async () => {
+      await populateAreas(true);
+    });
+
+    areaEl.addEventListener("change", () => {
+      brandPlace.textContent = areaEl.value || "roads";
+    });
+
+    btn.addEventListener("click", loadArea);
+    document.getElementById("btn-copy").addEventListener("click", async () => {
+      if (!lastRoadsUrl) {
+        setStatus("Load an area first.", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(lastRoadsUrl);
+        setStatus("Roads API URL copied.");
+      } catch {
+        setStatus("Could not copy — select the URL in the panel.", true);
+      }
+    });
+
+    applyToggles();
+    populateAreas(true).then(() => loadArea());
+  </script>
+</body>
+</html>
