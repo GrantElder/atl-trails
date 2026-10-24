@@ -1,6 +1,10 @@
 # Chattanooga / Hamilton County GIS — St. Elmo (37409)
 
-Explorer page: [`explore/stelmo.html`](../explore/stelmo.html) (open in a browser; serve over http).
+Chattanooga walk flow (open in a browser; serve over http):
+
+1. **Mapping** — [`explore/mapping.html`](../explore/mapping.html)
+2. **Routing** — [`explore/routing.html`](../explore/routing.html)
+3. **Navigation** — [`explore/navigation.html`](../explore/navigation.html)
 
 Boundary pickers:
 
@@ -14,6 +18,37 @@ Boundary pickers:
 Roads/alleys are clipped with `geometryType=esriGeometryPolygon` + the selected rings (not a fixed bbox).
 
 Basemap on the explorer: OpenStreetMap tiles only (no Carto).
+
+## Directed graph (after map query)
+
+Built client-side by [`explore/graph.js`](../explore/graph.js); view + download on the explorer.
+
+| Input | Use |
+|-------|-----|
+| Block_lc geometry + `Shape__Length` (ft) | Edge shapes and length |
+| MSAG `OneWayCode` (`B` / `F` / `T`) | Vehicle one-way metadata (spatial match) |
+
+Semantics:
+
+- **Walk mode (default):** each undirected piece → **two** directed edges (either way). Vehicle one-way is kept on the edge as `vehicle_one_way` but does not remove a direction.
+- **Drive mode:** `F` = along coord order only, `T` = reverse only, `B` = both.
+- **Mid-splits:** if a snapped node falls on another segment’s interior (~2 m), that segment is split so the junction is a real node.
+
+Length fields on every edge: `length_ft`, `length_m`, `length_mi` (from `Shape__Length` proportioned after splits, else haversine).
+
+Schema reference: [`schema/graph.yaml`](../schema/graph.yaml).
+
+## Routing
+
+From **Mapping**, **Next: Routing** writes the graph to `localStorage` (`atltrails.routingGraph`) and opens Routing.
+
+| Goal | Optimality |
+|------|------------|
+| Every roadway (revisits OK) | **Chinese Postman** — min length to cover all reachable roadways |
+| As many new miles (no reuse) | Heuristic — longest trail is NP-hard |
+| About N miles (no reuse) | Heuristic |
+
+After the first route, **Tweak & regenerate** dials appear for the heuristic goals. Coverage = unique roadway miles ÷ network miles.
 
 ## Why `ZIP = 37409` failed
 
@@ -82,6 +117,8 @@ https://pwgis.chattanooga.gov/arcgis/rest/services/Transportation/Alleyways/MapS
 `STATUS` coded values: `OPEN`, `UNOPEN`, `CLOSED`, `CLOSED_W_COND`, `TEMPUSE`.
 
 Same data as FeatureServer: `ROWandAlleys/ROWandAlleys`.
+
+In the explorer graph (`explore/graph.js`), only **OPEN** alleys are navigable: each polygon is turned into an approximate centerline, endpoints are snapped onto nearby Block_lc road geometry, and edges are tagged `kind: alley` (drawn dashed / brown in the map and routing lab). Unopen and closed alleys stay as polygon overlays only.
 
 ## ZIP polygon outline
 

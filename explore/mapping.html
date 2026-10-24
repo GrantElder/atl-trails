@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chattanooga · Mapping</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink: #1c241c;
+      --moss: #2f4a34;
+      --leaf: #5f8a4b;
+      --clay: #c46a3a;
+      --chalk: #f3efe6;
+      --panel: rgba(243, 239, 230, 0.92);
+      --line: rgba(28, 36, 28, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #c8d6b8 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #e8c9a8 0%, transparent 50%),
+        linear-gradient(165deg, #eef2e8, #dfe6d6 45%, #cfd8c4);
+    }
+
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+      min-height: 100dvh;
+    }
+
+    header {
+      padding: 1.1rem 1.25rem 0.85rem;
+      animation: rise 0.7s ease both;
+    }
+
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      margin: 0;
+    }
+
+    .brand span { color: var(--moss); }
+
+    .lede {
+      margin: 0.45rem 0 0;
+      max-width: 44rem;
+      color: rgba(28, 36, 28, 0.78);
+      font-size: 0.98rem;
+      line-height: 1.45;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 0.85rem;
+      padding: 0 1rem 1rem;
+      min-height: 0;
+      animation: rise 0.85s 0.08s ease both;
+    }
+
+    @media (max-width: 860px) {
+      .stage {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.9rem 1rem 1rem;
+      overflow: auto;
+      backdrop-filter: blur(8px);
+    }
+
+    .panel h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.05rem;
+      margin: 0.85rem 0 0.45rem;
+    }
+    .panel h2:first-child { margin-top: 0; }
+
+    .field {
+      display: grid;
+      gap: 0.28rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .field label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: rgba(28, 36, 28, 0.62);
+    }
+
+    select {
+      font: inherit;
+      font-size: 0.92rem;
+      padding: 0.48rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      max-width: 100%;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 0.35rem 0 0.75rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.28rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(47, 74, 52, 0.1);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .toggles {
+      display: grid;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    label.toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    label.toggle input { accent-color: var(--moss); }
+
+    .swatch {
+      width: 1.1rem;
+      height: 0.35rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .swatch.poly {
+      height: 0.75rem;
+      width: 0.9rem;
+      border: 1px solid rgba(0,0,0,0.25);
+      opacity: 0.85;
+    }
+
+    .api-block p {
+      margin: 0 0 0.35rem;
+      font-size: 0.8rem;
+      color: rgba(28, 36, 28, 0.7);
+    }
+
+    .api-block code,
+    #detail {
+      display: block;
+      width: 100%;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.68rem;
+      line-height: 1.4;
+      background: rgba(28, 36, 28, 0.06);
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid var(--line);
+    }
+
+    #detail {
+      min-height: 4.5rem;
+      margin-top: 0.45rem;
+      color: var(--ink);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 0.55rem 0 0.65rem;
+    }
+
+    button {
+      font: inherit;
+      font-weight: 560;
+      font-size: 0.86rem;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.48rem 0.9rem;
+      cursor: pointer;
+      background: var(--moss);
+      color: var(--chalk);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    button:hover { background: #243a28; transform: translateY(-1px); }
+    button.secondary {
+      background: transparent;
+      color: var(--moss);
+      border: 1px solid rgba(47, 74, 52, 0.35);
+    }
+    button:disabled { opacity: 0.55; cursor: wait; transform: none; }
+
+    #status {
+      font-size: 0.82rem;
+      color: rgba(28, 36, 28, 0.72);
+      min-height: 1.2em;
+    }
+    #status.error { color: #8a2f1f; }
+
+    .map-wrap {
+      position: relative;
+      min-height: 420px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(28, 36, 28, 0.12);
+    }
+
+    #map { height: 100%; min-height: 420px; }
+    .leaflet-container { background: #d5ddd0; font: inherit; }
+
+    .note {
+      margin: 0.85rem 0 0;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: rgba(28, 36, 28, 0.65);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      margin: 0.65rem 0 0.35rem;
+      font-size: 0.82rem;
+    }
+    .flow-step {
+      padding: 0.28rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid rgba(47, 74, 52, 0.28);
+      color: var(--moss, #2f4a34);
+      text-decoration: none;
+      background: rgba(243, 239, 230, 0.65);
+    }
+    .flow-step.on {
+      background: #2f4a34;
+      color: #f3efe6;
+      border-color: transparent;
+      font-weight: 600;
+    }
+    .flow-step.dim { opacity: 0.45; pointer-events: none; }
+    .flow-sep { opacity: 0.45; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1 class="brand">Chattanooga <span>Mapping</span></h1>
+      <nav class="flow" aria-label="Chattanooga walk stages">
+        <span class="flow-step on">1 · Mapping</span>
+        <span class="flow-sep">→</span>
+        <a class="flow-step" id="flow-plan" href="routing.html">2 · Routing</a>
+        <span class="flow-sep">→</span>
+        <a class="flow-step dim" id="flow-nav" href="navigation.html" title="Build a route in Routing first">3 · Navigation</a>
+      </nav>
+      <p class="lede" id="lede">Load Chattanooga roadways for an area — then route a walk, then navigate it.</p>
+    </header>
+
+    <div class="stage">
+      <aside class="panel">
+        <h2>Area</h2>
+        <div class="field">
+          <label for="bound-type">Boundary type</label>
+          <select id="bound-type">
+            <option value="historic-local">Historic district (local)</option>
+            <option value="historic-national">Historic district (national)</option>
+            <option value="neighborhood">Neighborhood association</option>
+            <option value="zip">ZIP code</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bound-area">Place</label>
+          <select id="bound-area"></select>
+        </div>
+
+        <div class="actions">
+          <button id="btn-load" type="button">Load map</button>
+          <button id="btn-routing" type="button" disabled>Next: Routing →</button>
+        </div>
+        <div id="status">Choose a place, then load the map.</div>
+
+        <h2>Walk network</h2>
+        <div class="field">
+          <label for="graph-mode">How to treat one-ways</label>
+          <select id="graph-mode">
+            <option value="walk" selected>Walking — both directions on every roadway</option>
+            <option value="drive">Driving — respect vehicle one-ways</option>
+          </select>
+        </div>
+        <div class="meta">
+          <span class="chip">Intersections <strong id="n-nodes">—</strong></span>
+          <span class="chip">Roadway links <strong id="n-edges">—</strong></span>
+          <span class="chip">Miles <strong id="n-miles">—</strong></span>
+          <span class="chip">Alleys linked <strong id="n-graph-alleys">—</strong></span>
+          <span class="chip">Splits <strong id="n-splits">—</strong></span>
+        </div>
+
+        <h2>Layers</h2>
+        <div class="meta">
+          <span class="chip">Roads <strong id="n-roads">—</strong></span>
+          <span class="chip">Alleys / ROW <strong id="n-alleys">—</strong></span>
+        </div>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="tog-graph" checked /><span class="swatch" style="background:#1a4d6d;height:0.45rem"></span> Graph edges + nodes</label>
+          <div class="toggle" title="OPEN alleys snapped into the walk graph" style="opacity:0.9;pointer-events:none"><span class="swatch" style="background:#8a5a2b;height:0.45rem"></span> Alley edges (dashed brown)</div>
+          <label class="toggle"><input type="checkbox" id="tog-arrows" checked /><span class="swatch" style="background:#1a4d6d"></span> Direction arrows</label>
+          <label class="toggle"><input type="checkbox" id="tog-roads" checked /><span class="swatch" style="background:#2f4a34"></span> Roadways (source)</label>
+          <label class="toggle"><input type="checkbox" id="tog-major" checked /><span class="swatch" style="background:#c46a3a;height:0.45rem"></span> Major / collectors</label>
+          <label class="toggle"><input type="checkbox" id="tog-local" checked /><span class="swatch" style="background:#6b7d68"></span> Local roadways</label>
+          <label class="toggle"><input type="checkbox" id="tog-alleys" /><span class="swatch poly" style="background:#5f8a4b"></span> Open alleys / ROW</label>
+          <label class="toggle"><input type="checkbox" id="tog-unopen" /><span class="swatch poly" style="background:#a84b3c"></span> Unopen alleys</label>
+          <label class="toggle"><input type="checkbox" id="tog-closed" /><span class="swatch poly" style="background:#222"></span> Closed / temp use</label>
+          <label class="toggle"><input type="checkbox" id="tog-bound" checked /><span class="swatch" style="background:transparent;border:2px solid #2f6b3a;height:0.7rem"></span> Boundary outline</label>
+        </div>
+
+        <div class="api-block">
+          <h2>Selected feature</h2>
+          <pre id="detail">Click a road or alley on the map.</pre>
+        </div>
+
+        <p class="note">
+          Basemap: OpenStreetMap. Road shapes: City Block_lc (+ <code>Shape__Length</code> ft).
+          Vehicle one-way codes come from Hamilton 911 MSAG (<code>OneWayCode</code> B/F/T), matched spatially
+          (POST + bbox so the browser doesn’t hit CORS on oversized GETs).
+          OPEN alley polygons become navigable centerlines (dashed brown on the graph), snapped onto nearby roads.
+          Walk mode keeps both directed edges; drive mode drops the illegal direction.
+        </p>
+      </aside>
+
+      <div class="map-wrap">
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="graph.js"></script>
+  <script>
+    const BOUNDARIES = {
+      "historic-local": {
+        label: "Historic district (local)",
+        listUrl: "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/Live_Chatt/MapServer/18/query",
+        nameField: "DISTRICT",
+        defaults: ["St. Elmo"],
+        preferJson: true
+      },
+      "historic-national": {
+        label: "Historic district (national)",
+        listUrl: "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/Live_Chatt/MapServer/19/query",
+        nameField: "DISTRICT",
+        defaults: ["St. Elmo"],
+        preferJson: true
+      },
+      neighborhood: {
+        label: "Neighborhood association",
+        listUrl: "https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/Chattanooga_Neighborhood_Associations_2025/FeatureServer/1/query",
+        nameField: "name",
+        defaults: ["Community Association of Historic St. Elmo"],
+        preferJson: false
+      },
+      zip: {
+        label: "ZIP code",
+        listUrl: "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/Live_Chatt/MapServer/17/query",
+        nameField: "ZIPCODE",
+        defaults: ["37409"],
+        preferJson: true
+      }
+    };
+
+    const ROADS_URL =
+      "https://pwgis.chattanooga.gov/server/rest/services/HC_Base/Block_lc/FeatureServer/0/query";
+    const ALLEYS_URL =
+      "https://pwgis.chattanooga.gov/arcgis/rest/services/Transportation/Alleyways/MapServer/0/query";
+    const MSAG_URL =
+      "https://mapsdev.hamiltontn.gov/hcwa03/rest/services/911_MSAG_Online_Map/MapServer/2/query";
+
+    const typeEl = document.getElementById("bound-type");
+    const areaEl = document.getElementById("bound-area");
+    const modeEl = document.getElementById("graph-mode");
+    const statusEl = document.getElementById("status");
+    const btn = document.getElementById("btn-load");
+    const ledeEl = document.getElementById("lede");
+
+    let areaCache = {}; // type -> [{value,label}]
+    let activeBoundaryGeom = null; // { rings, spatialReference }
+    let lastRoadsFc = null;
+    let lastGraph = null;
+    let arrowLayer = L.layerGroup();
+
+    const map = L.map("map", { zoomControl: true }).setView([34.995, -85.329], 14);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(map);
+
+    const layers = {
+      bound: L.geoJSON(null, {
+        style: {
+          color: "#2f6b3a",
+          weight: 2.5,
+          dashArray: "6 5",
+          fillColor: "#5f8a4b",
+          fillOpacity: 0.06
+        }
+      }),
+      major: L.geoJSON(null, {
+        style: () => ({ color: "#c46a3a", weight: 4, opacity: 0.55 }),
+        onEachFeature
+      }),
+      local: L.geoJSON(null, {
+        style: () => ({ color: "#6b7d68", weight: 2.2, opacity: 0.45 }),
+        onEachFeature
+      }),
+      open: L.geoJSON(null, {
+        style: () => ({ color: "#2f4a34", weight: 1, fillColor: "#5f8a4b", fillOpacity: 0.45 }),
+        onEachFeature
+      }),
+      unopen: L.geoJSON(null, {
+        style: () => ({ color: "#5a2018", weight: 1, fillColor: "#a84b3c", fillOpacity: 0.5 }),
+        onEachFeature
+      }),
+      closed: L.geoJSON(null, {
+        style: (f) => {
+          const s = (f.properties.STATUS || "").toUpperCase();
+          if (s === "TEMPUSE") return { color: "#7a6a20", weight: 1, fillColor: "#d4c35a", fillOpacity: 0.5 };
+          return { color: "#111", weight: 1, fillColor: "#222", fillOpacity: 0.55 };
+        },
+        onEachFeature
+      }),
+      graph: L.geoJSON(null, {
+        style: (f) => {
+          const p = f.properties || {};
+          if (p.navigable_kind === "alley") {
+            return {
+              color: "#8a5a2b",
+              weight: 3.4,
+              opacity: 0.95,
+              dashArray: "7 5"
+            };
+          }
+          const ow = p.vehicle_one_way;
+          const oneWay = ow === "F" || ow === "T";
+          return {
+            color: oneWay ? "#a8421a" : "#1a4d6d",
+            weight: oneWay ? 3.2 : 2.4,
+            opacity: 0.92
+          };
+        },
+        pointToLayer: (f, latlng) =>
+          L.circleMarker(latlng, {
+            radius: 4,
+            color: "#0f2a38",
+            weight: 1,
+            fillColor: "#f3efe6",
+            fillOpacity: 1
+          }),
+        onEachFeature: onGraphFeature
+      })
+    };
+
+    function onGraphFeature(feature, layer) {
+      const p = feature.properties || {};
+      layer.on("click", () => {
+        document.getElementById("detail").textContent = JSON.stringify(p, null, 2);
+      });
+      if (p.kind === "edge") {
+        const alley = p.navigable_kind === "alley" ? " · alley" : "";
+        const label = `${p.name || "edge"}${alley} · ${p.length_ft} ft (${p.length_mi} mi) · ${p.from}→${p.to}`;
+        layer.bindTooltip(label, { sticky: true, opacity: 0.92 });
+      } else if (p.kind === "node") {
+        layer.bindTooltip(p.id, { sticky: true, opacity: 0.92 });
+      }
+    }
+
+    function bearingDeg(a, b) {
+      const toRad = Math.PI / 180;
+      const φ1 = a[1] * toRad;
+      const φ2 = b[1] * toRad;
+      const Δλ = (b[0] - a[0]) * toRad;
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+    }
+
+    function pointAlong(coords, t) {
+      const total = coords.reduce((s, _, i) => (i ? s + RoadGraph.haversineM(coords[i - 1], coords[i]) : 0), 0);
+      if (total <= 0) return coords[0];
+      let target = total * t;
+      for (let i = 1; i < coords.length; i++) {
+        const d = RoadGraph.haversineM(coords[i - 1], coords[i]);
+        if (target <= d) {
+          const u = d ? target / d : 0;
+          return [
+            coords[i - 1][0] + u * (coords[i][0] - coords[i - 1][0]),
+            coords[i - 1][1] + u * (coords[i][1] - coords[i - 1][1])
+          ];
+        }
+        target -= d;
+      }
+      return coords[coords.length - 1];
+    }
+
+    function rebuildArrows(graph) {
+      arrowLayer.clearLayers();
+      if (!graph) return;
+      for (const e of graph.edges) {
+        if (!e.coords || e.coords.length < 2) continue;
+        const p = pointAlong(e.coords, 0.62);
+        let i = Math.max(1, Math.floor((e.coords.length - 1) * 0.62));
+        const a = e.coords[Math.max(0, i - 1)];
+        const b = e.coords[i];
+        const rot = bearingDeg(a, b);
+        const oneWay = e.vehicle_one_way === "F" || e.vehicle_one_way === "T";
+        const icon = L.divIcon({
+          className: "",
+          html: `<div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:10px solid ${oneWay ? "#a8421a" : "#1a4d6d"};transform:rotate(${rot}deg);opacity:0.9"></div>`,
+          iconSize: [10, 10],
+          iconAnchor: [5, 5]
+        });
+        L.marker([p[1], p[0]], { icon, interactive: false }).addTo(arrowLayer);
+      }
+    }
+
+    function renderGraph(graph) {
+      layers.graph.clearLayers();
+      arrowLayer.clearLayers();
+      lastGraph = graph;
+      syncFlowLinks();
+      if (!graph) {
+        document.getElementById("n-nodes").textContent = "—";
+        document.getElementById("n-edges").textContent = "—";
+        document.getElementById("n-miles").textContent = "—";
+        document.getElementById("n-graph-alleys").textContent = "—";
+        document.getElementById("n-splits").textContent = "—";
+        return;
+      }
+      layers.graph.addData(RoadGraph.toGeoJSON(graph));
+      rebuildArrows(graph);
+      document.getElementById("n-nodes").textContent = String(graph.stats.nodes);
+      document.getElementById("n-edges").textContent = String(graph.stats.directed);
+      document.getElementById("n-miles").textContent = String(graph.stats.total_length_mi);
+      document.getElementById("n-graph-alleys").textContent = String(graph.stats.alleys ?? 0);
+      document.getElementById("n-splits").textContent = String(graph.stats.splits);
+      applyToggles();
+    }
+
+    function buildGraphFromRoads() {
+      if (!lastRoadsFc) return null;
+      return RoadGraph.build(lastRoadsFc.features || [], {
+        mode: modeEl.value,
+        snapMeters: 2
+      });
+    }
+
+    function onEachFeature(feature, layer) {
+      const p = feature.properties || {};
+      layer.on("click", () => {
+        document.getElementById("detail").textContent = JSON.stringify(p, null, 2);
+      });
+      const name = p.FullName || p.Name || p.NAME_PDF || p.DESCRIPTIO || p.STATUS || "";
+      if (name) layer.bindTooltip(name, { sticky: true, opacity: 0.92 });
+    }
+
+    function sqlQuote(s) {
+      return "'" + String(s).replace(/'/g, "''") + "'";
+    }
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    async function fetchJson(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      return data;
+    }
+
+    /** ArcGIS query: POST when geometry is present so long polygons don't blow the URL / CORS. */
+    async function queryArcGIS(endpoint, params) {
+      const body = params instanceof URLSearchParams ? params : new URLSearchParams(params);
+      const hasGeom = body.has("geometry") && String(body.get("geometry") || "").length > 800;
+      if (hasGeom) {
+        return fetchJson(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
+      }
+      return fetchJson(`${endpoint}?${body}`);
+    }
+
+    function envelopeFromRings(rings) {
+      let xmin = Infinity, ymin = Infinity, xmax = -Infinity, ymax = -Infinity;
+      for (const ring of rings || []) {
+        for (const p of ring) {
+          xmin = Math.min(xmin, p[0]);
+          ymin = Math.min(ymin, p[1]);
+          xmax = Math.max(xmax, p[0]);
+          ymax = Math.max(ymax, p[1]);
+        }
+      }
+      return { xmin, ymin, xmax, ymax, spatialReference: { wkid: 4326 } };
+    }
+
+    function buildEnvelopeQuery(geometry) {
+      const env = envelopeFromRings(geometry.rings);
+      return new URLSearchParams({
+        where: "1=1",
+        geometry: JSON.stringify(env),
+        geometryType: "esriGeometryEnvelope",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "*",
+        outSR: "4326",
+        returnGeometry: "true",
+        f: "json"
+      });
+    }
+
+    function esriToGeoJSON(esri) {
+      const features = (esri.features || []).map((feat) => {
+        const g = feat.geometry;
+        if (!g) return null;
+        let geometry = null;
+        if (g.rings) {
+          geometry = { type: "Polygon", coordinates: g.rings };
+        } else if (g.paths) {
+          geometry = g.paths.length > 1
+            ? { type: "MultiLineString", coordinates: g.paths }
+            : { type: "LineString", coordinates: g.paths[0] };
+        }
+        if (!geometry) return null;
+        return { type: "Feature", properties: feat.attributes || {}, geometry };
+      }).filter(Boolean);
+      return { type: "FeatureCollection", features };
+    }
+
+    function isMajor(props) {
+      const ft = (props.FeatureType || "").toLowerCase();
+      const fc = (props.FunctClass || "").toLowerCase();
+      if (ft.includes("major")) return true;
+      if (fc.includes("local")) return false;
+      return Boolean(fc);
+    }
+
+    async function loadAreaList(type) {
+      if (areaCache[type]) return areaCache[type];
+      const cfg = BOUNDARIES[type];
+      const params = new URLSearchParams({
+        where: "1=1",
+        outFields: cfg.nameField,
+        returnGeometry: "false",
+        returnDistinctValues: "true",
+        orderByFields: cfg.nameField,
+        resultRecordCount: "2000",
+        f: "json"
+      });
+      const data = await fetchJson(`${cfg.listUrl}?${params}`);
+      const names = [...new Set(
+        (data.features || [])
+          .map((f) => f.attributes && f.attributes[cfg.nameField])
+          .filter((v) => v != null && String(v).trim() !== "")
+          .map(String)
+      )].sort((a, b) => a.localeCompare(b));
+      areaCache[type] = names.map((n) => ({ value: n, label: n }));
+      return areaCache[type];
+    }
+
+    async function populateAreas(preferDefault = true) {
+      const type = typeEl.value;
+      areaEl.disabled = true;
+      areaEl.innerHTML = "<option>Loading…</option>";
+      try {
+        const items = await loadAreaList(type);
+        areaEl.innerHTML = "";
+        for (const item of items) {
+          const opt = document.createElement("option");
+          opt.value = item.value;
+          opt.textContent = item.label;
+          areaEl.appendChild(opt);
+        }
+        if (preferDefault) {
+          const defaults = BOUNDARIES[type].defaults || [];
+          const match = defaults.find((d) => items.some((i) => i.value === d));
+          if (match) areaEl.value = match;
+        }
+        areaEl.disabled = false;
+      } catch (err) {
+        areaEl.innerHTML = "<option>(failed to load)</option>";
+        setStatus(`Could not list areas: ${err.message}`, true);
+      }
+    }
+
+    async function fetchBoundaryFeature(type, name) {
+      const cfg = BOUNDARIES[type];
+      const params = new URLSearchParams({
+        where: `${cfg.nameField}=${sqlQuote(name)}`,
+        outFields: "*",
+        outSR: "4326",
+        returnGeometry: "true",
+        f: "json"
+      });
+      const data = await fetchJson(`${cfg.listUrl}?${params}`);
+      if (!data.features || !data.features.length) {
+        throw new Error(`No boundary geometry for ${name}`);
+      }
+      return data.features[0];
+    }
+
+    function buildClipQuery(geometry) {
+      const geom = {
+        rings: geometry.rings,
+        spatialReference: { wkid: 4326 }
+      };
+      return new URLSearchParams({
+        where: "1=1",
+        geometry: JSON.stringify(geom),
+        geometryType: "esriGeometryPolygon",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "*",
+        outSR: "4326",
+        returnGeometry: "true",
+        f: "geojson"
+      });
+    }
+
+    function clearDataLayers() {
+      Object.values(layers).forEach((l) => l.clearLayers());
+      arrowLayer.clearLayers();
+      lastRoadsFc = null;
+      lastGraph = null;
+      renderGraph(null);
+    }
+
+    async function loadArea() {
+      const type = typeEl.value;
+      const name = areaEl.value;
+      if (!name || name.startsWith("(")) {
+        setStatus("Pick an area first.", true);
+        return;
+      }
+
+      btn.disabled = true;
+      ledeEl.textContent = `Loading “${name}” — Chattanooga roadways for this boundary.`;
+      setStatus(`Loading boundary “${name}”…`);
+      clearDataLayers();
+      activeBoundaryGeom = null;
+
+      try {
+        const feat = await fetchBoundaryFeature(type, name);
+        if (!feat.geometry || !feat.geometry.rings) {
+          throw new Error("Boundary has no polygon rings");
+        }
+        activeBoundaryGeom = feat.geometry;
+
+        const boundFc = esriToGeoJSON({ features: [feat] });
+        layers.bound.addData(boundFc);
+
+        const roadParams = buildClipQuery(activeBoundaryGeom);
+        roadParams.set(
+          "outFields",
+          "OBJECTID,FullName,FunctClass,FeatureType,StreetStatus,Ownership,Name,Shape__Length"
+        );
+
+        const alleyParams = buildClipQuery(activeBoundaryGeom);
+        alleyParams.set("outFields", "STATUS,DESCRIPTIO,FROM_,TO_,NAME_PDF,EXISTS_");
+
+        // MSAG: envelope + POST — full historic rings in a GET trip CORS (error responses omit ACAO).
+        const msagParams = buildEnvelopeQuery(activeBoundaryGeom);
+        msagParams.set("outFields", "StreetName,OneWayCode,OBJECTID");
+        msagParams.set("returnGeometry", "true");
+        msagParams.set("f", "json");
+
+        setStatus("Fetching roads, MSAG one-way, and alleys…");
+        const [roadsFc, alleysFc, msagResult] = await Promise.all([
+          queryArcGIS(ROADS_URL, roadParams),
+          queryArcGIS(ALLEYS_URL, alleyParams),
+          queryArcGIS(MSAG_URL, msagParams)
+            .then((data) => ({ ok: true, data }))
+            .catch((err) => ({ ok: false, err }))
+        ]);
+
+        let oneWayNote = "";
+        if (msagResult.ok) {
+          const msagFc = msagResult.data.features && msagResult.data.features[0]?.geometry?.paths
+            ? esriToGeoJSON(msagResult.data)
+            : msagResult.data.type === "FeatureCollection"
+              ? msagResult.data
+              : esriToGeoJSON(msagResult.data);
+          RoadGraph.attachOneWayFromMsag(roadsFc.features || [], msagFc.features || []);
+          oneWayNote = "";
+        } else {
+          console.warn("MSAG one-way skipped:", msagResult.err);
+          oneWayNote = " (MSAG one-way unavailable — graph is bidirectional)";
+        }
+
+        let openN = 0, unopenN = 0, closedN = 0;
+        for (const f of alleysFc.features || []) {
+          const s = String((f.properties && f.properties.STATUS) || "").toUpperCase();
+          if (s === "OPEN") { layers.open.addData(f); openN++; }
+          else if (s === "UNOPEN") { layers.unopen.addData(f); unopenN++; }
+          else { layers.closed.addData(f); closedN++; }
+        }
+        document.getElementById("n-alleys").textContent = String(openN + unopenN + closedN);
+
+        // OPEN alleys → centerlines snapped onto roads, then merged into navigable graph
+        const alleyNav = RoadGraph.openAlleysToNavFeatures(
+          alleysFc.features || [],
+          roadsFc.features || [],
+          { connectMeters: 22 }
+        );
+        lastRoadsFc = {
+          type: "FeatureCollection",
+          features: [...(roadsFc.features || []), ...alleyNav]
+        };
+
+        let majorN = 0, localN = 0;
+        for (const f of roadsFc.features || []) {
+          if (isMajor(f.properties || {})) {
+            layers.major.addData(f);
+            majorN++;
+          } else {
+            layers.local.addData(f);
+            localN++;
+          }
+        }
+        document.getElementById("n-roads").textContent = String(majorN + localN);
+
+        setStatus("Building directed graph (roads + open alleys)…");
+        const graph = buildGraphFromRoads();
+        renderGraph(graph);
+
+        const bounds = L.featureGroup(
+          Object.values(layers).filter((l) => l.getLayers().length)
+        ).getBounds();
+        if (bounds.isValid()) map.fitBounds(bounds, { padding: [28, 28] });
+
+        ledeEl.textContent = `“${name}” loaded — continue to Routing when ready.`;
+        setStatus(
+          `${name}: ${majorN + localN} roadways + ${alleyNav.length}/${openN} open alleys → ${graph.stats.nodes} intersections, ${graph.stats.total_length_mi} mi.${oneWayNote}`
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus(`Load failed: ${err.message}`, true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function applyToggles() {
+      const want = {
+        graph: document.getElementById("tog-graph").checked,
+        arrows: document.getElementById("tog-arrows").checked,
+        roads: document.getElementById("tog-roads").checked,
+        major: document.getElementById("tog-major").checked,
+        local: document.getElementById("tog-local").checked,
+        alleys: document.getElementById("tog-alleys").checked,
+        unopen: document.getElementById("tog-unopen").checked,
+        closed: document.getElementById("tog-closed").checked,
+        bound: document.getElementById("tog-bound").checked
+      };
+      const sync = (layer, on) => {
+        if (on && !map.hasLayer(layer)) layer.addTo(map);
+        if (!on && map.hasLayer(layer)) map.removeLayer(layer);
+      };
+      sync(layers.bound, want.bound);
+      sync(layers.major, want.roads && want.major);
+      sync(layers.local, want.roads && want.local);
+      sync(layers.open, want.alleys);
+      sync(layers.unopen, want.unopen);
+      sync(layers.closed, want.closed);
+      sync(layers.graph, want.graph);
+      sync(arrowLayer, want.graph && want.arrows);
+    }
+
+    document.querySelectorAll(".toggles input").forEach((el) => {
+      el.addEventListener("change", applyToggles);
+    });
+
+    typeEl.addEventListener("change", async () => {
+      await populateAreas(true);
+    });
+
+    areaEl.addEventListener("change", () => {
+      const n = areaEl.value;
+      if (n && !n.startsWith("(")) {
+        ledeEl.textContent = `Selected “${n}”. Load the map, then continue to Routing.`;
+      }
+    });
+
+    modeEl.addEventListener("change", () => {
+      if (!lastRoadsFc) return;
+      const graph = buildGraphFromRoads();
+      renderGraph(graph);
+      setStatus(
+        `Network rebuilt (${modeEl.value}): ${graph.stats.nodes} intersections, ${graph.stats.directed} roadway links.`
+      );
+    });
+
+    btn.addEventListener("click", loadArea);
+
+    function syncFlowLinks() {
+      document.getElementById("btn-routing").disabled = !lastGraph;
+      const navEl = document.getElementById("flow-nav");
+      let hasRoute = false;
+      try {
+        const raw = localStorage.getItem("atltrails.navRoute");
+        const env = raw ? JSON.parse(raw) : null;
+        hasRoute = Boolean(env?.route?.ok);
+      } catch {
+        hasRoute = false;
+      }
+      navEl.classList.toggle("dim", !hasRoute);
+      navEl.title = hasRoute
+        ? "Open Navigation"
+        : "Build a route in Routing first";
+    }
+
+    document.getElementById("flow-nav").addEventListener("click", (ev) => {
+      if (document.getElementById("flow-nav").classList.contains("dim")) {
+        ev.preventDefault();
+        setStatus("Finish Routing first (step 2), then you can open Navigation.", true);
+      }
+    });
+
+    document.getElementById("btn-routing").addEventListener("click", () => {
+      if (!lastGraph) {
+        setStatus("Load a map first.", true);
+        return;
+      }
+      const payload = RoadGraph.exportJSON(lastGraph);
+      try {
+        localStorage.setItem(
+          "atltrails.routingGraph",
+          JSON.stringify({
+            savedAt: new Date().toISOString(),
+            areaName: areaEl.value || "area",
+            graphMode: modeEl.value,
+            graph: payload
+          })
+        );
+      } catch (err) {
+        setStatus(`Could not save network for planning: ${err.message}`, true);
+        return;
+      }
+      window.location.href = "routing.html";
+    });
+
+    applyToggles();
+    syncFlowLinks();
+    populateAreas(true).then(() => loadArea());
+  </script>
+</body>
+</html>

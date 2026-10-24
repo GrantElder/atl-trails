@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1c241c" />
+  <title>Chattanooga · Navigation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink: #1c241c;
+      --moss: #2f4a34;
+      --clay: #c46a3a;
+      --chalk: #f3efe6;
+      --line: rgba(243, 239, 230, 0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--chalk);
+      background: #152018;
+      overflow: hidden;
+    }
+    .app {
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+    header {
+      padding: 0.85rem 1rem 0.5rem;
+      padding-top: max(0.85rem, env(safe-area-inset-top));
+    }
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .brand span { color: #8fb892; }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.4rem;
+      font-size: 0.75rem;
+      opacity: 0.85;
+    }
+    .chip {
+      background: rgba(243, 239, 230, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+
+    .instruction {
+      margin: 0.55rem 0 0;
+      padding: 0.85rem 1rem;
+      background: linear-gradient(160deg, #2a4030, #1e2e24);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      min-height: 5.2rem;
+    }
+    .turn-glyph {
+      width: 3.4rem;
+      height: 3.4rem;
+      border-radius: 50%;
+      background: var(--clay);
+      color: #1c241c;
+      display: grid;
+      place-items: center;
+      font-size: 1.7rem;
+      font-weight: 700;
+      box-shadow: 0 8px 20px rgba(196, 106, 58, 0.35);
+      transition: transform 0.25s ease;
+    }
+    .turn-glyph.follow {
+      background: #8fb892;
+    }
+    .instr-text strong {
+      display: block;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+    }
+    .instr-text .sub {
+      margin-top: 0.3rem;
+      font-size: 0.82rem;
+      opacity: 0.78;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      padding: 0.5rem 1rem;
+    }
+    .circle-wrap {
+      position: relative;
+      width: min(100%, 78vw, 380px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid rgba(143, 184, 146, 0.45);
+      box-shadow:
+        0 0 0 10px rgba(28, 36, 28, 0.35),
+        0 24px 50px rgba(0, 0, 0, 0.45);
+      background: #d5ddd0;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    .leaflet-container { background: #d5ddd0; font: inherit; }
+    .you-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #2f6bff;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 6px rgba(47, 107, 255, 0.25);
+    }
+    .heading-wedge {
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-bottom: 16px solid #2f6bff;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+      transform-origin: 50% 100%;
+    }
+    .ring-label {
+      position: absolute;
+      left: 50%;
+      bottom: 0.65rem;
+      transform: translateX(-50%);
+      z-index: 500;
+      background: rgba(21, 32, 24, 0.82);
+      color: var(--chalk);
+      font-size: 0.72rem;
+      padding: 0.28rem 0.6rem;
+      border-radius: 999px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    footer {
+      padding: 0.65rem 1rem 1rem;
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+      display: grid;
+      gap: 0.55rem;
+    }
+    .pager {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0.45rem;
+      align-items: center;
+    }
+    .pager .center {
+      text-align: center;
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+    button {
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.88rem;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.65rem 0.9rem;
+      cursor: pointer;
+      background: #8fb892;
+      color: #152018;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--chalk);
+      border: 1px solid var(--line);
+    }
+    button:disabled { opacity: 0.4; cursor: default; }
+    .row-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
+    }
+    #status {
+      font-size: 0.78rem;
+      opacity: 0.75;
+      text-align: center;
+      min-height: 1.2em;
+    }
+    #status.error { color: #e8a090; opacity: 1; }
+    .empty {
+      padding: 2rem 1.25rem;
+      text-align: center;
+    }
+    .empty p { opacity: 0.8; line-height: 1.45; font-size: 0.95rem; }
+    a { color: #8fb892; }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      margin: 0.45rem 0 0.2rem;
+      font-size: 0.78rem;
+    }
+    .flow-step {
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(143, 184, 146, 0.35);
+      color: #c5d9c7;
+      text-decoration: none;
+      background: rgba(243, 239, 230, 0.06);
+    }
+    .flow-step.on {
+      background: #8fb892;
+      color: #152018;
+      border-color: transparent;
+      font-weight: 600;
+    }
+    .flow-sep { opacity: 0.45; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <h1 class="brand">Chattanooga <span>Navigation</span></h1>
+      <nav class="flow" aria-label="Chattanooga walk stages">
+        <a class="flow-step" href="mapping.html">1 · Mapping</a>
+        <span class="flow-sep">→</span>
+        <a class="flow-step" href="routing.html">2 · Routing</a>
+        <span class="flow-sep">→</span>
+        <span class="flow-step on">3 · Navigation</span>
+      </nav>
+      <div class="meta-row" id="meta-row">
+        <span class="chip" id="chip-area">—</span>
+        <span class="chip" id="chip-total">—</span>
+      </div>
+      <div class="instruction" id="instruction" hidden>
+        <div class="turn-glyph" id="turn-glyph">●</div>
+        <div class="instr-text">
+          <strong id="instr-main">—</strong>
+          <div class="sub" id="instr-sub">—</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="stage" id="stage">
+      <div class="empty" id="empty">
+        <p>
+          No route saved yet. Go to <a href="routing.html">Routing</a>, generate a route,
+          then tap <strong>Next: Navigation</strong>.
+        </p>
+      </div>
+      <div class="circle-wrap" id="circle" hidden>
+        <div id="map"></div>
+        <div class="ring-label" id="ring-label">street ahead</div>
+      </div>
+    </div>
+
+    <footer id="footer" hidden>
+      <div class="pager">
+        <button type="button" class="secondary" id="btn-prev">← Prev</button>
+        <div class="center" id="step-label">—</div>
+        <button type="button" class="secondary" id="btn-next">Next →</button>
+      </div>
+      <div class="row-actions">
+        <button type="button" id="btn-follow">Follow me</button>
+        <button type="button" class="secondary" id="btn-reload">Reload route</button>
+      </div>
+      <div id="status">Flip turns manually, or Follow me with GPS.</div>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="places.js"></script>
+  <script src="navigate.js"></script>
+  <script>
+    const emptyEl = document.getElementById("empty");
+    const circleEl = document.getElementById("circle");
+    const footerEl = document.getElementById("footer");
+    const instructionEl = document.getElementById("instruction");
+    const statusEl = document.getElementById("status");
+
+    let envelope = null;
+    let maneuvers = [];
+    let idx = 0;
+    let follow = false;
+    let watchId = null;
+    let map = null;
+    let routeLine = null;
+    let aheadLine = null;
+    let youMarker = null;
+    let headingMarker = null;
+    let graph = null;
+    let userHeading = null;
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function ensureMap() {
+      if (map) return;
+      map = L.map("map", {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: true,
+        scrollWheelZoom: true
+      });
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19
+      }).addTo(map);
+      routeLine = L.polyline([], { color: "#6b7d68", weight: 4, opacity: 0.35 }).addTo(map);
+      aheadLine = L.polyline([], { color: "#c46a3a", weight: 6, opacity: 0.95 }).addTo(map);
+      youMarker = L.marker([0, 0], {
+        icon: L.divIcon({ className: "", html: '<div class="you-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+        interactive: false
+      });
+      headingMarker = L.marker([0, 0], {
+        icon: L.divIcon({
+          className: "",
+          html: '<div class="heading-wedge" id="wedge"></div>',
+          iconSize: [14, 16],
+          iconAnchor: [7, 16]
+        }),
+        interactive: false
+      });
+    }
+
+    function load() {
+      envelope = Nav.loadNav();
+      const graphEnv = Nav.loadGraphEnvelope();
+      graph = graphEnv?.graph || envelope?.graph || null;
+
+      if (!envelope?.route?.ok || !envelope.route.steps?.length) {
+        emptyEl.hidden = false;
+        circleEl.hidden = true;
+        footerEl.hidden = true;
+        instructionEl.hidden = true;
+        setStatus("Waiting for a planned route…");
+        return;
+      }
+
+      emptyEl.hidden = true;
+      circleEl.hidden = false;
+      footerEl.hidden = false;
+      instructionEl.hidden = false;
+
+      maneuvers = Nav.buildManeuvers(envelope.route);
+      idx = 0;
+      document.getElementById("chip-area").textContent = envelope.areaName || "route";
+      document.getElementById("chip-total").textContent =
+        `${Nav.formatMi(envelope.route.length_mi)} · ${maneuvers.length} turns`;
+
+      ensureMap();
+      const all = envelope.route.coords || [];
+      routeLine.setLatLngs(all.map((c) => [c[1], c[0]]));
+      showManeuver(0, { fit: true });
+      setStatus("Route loaded. Use Next or Follow me.");
+      setTimeout(() => map.invalidateSize(), 80);
+    }
+
+    function showManeuver(i, opts = {}) {
+      if (!maneuvers.length) return;
+      idx = Math.max(0, Math.min(maneuvers.length - 1, i));
+      const m = maneuvers[idx];
+      document.getElementById("turn-glyph").textContent = m.turn.icon;
+      document.getElementById("turn-glyph").classList.toggle("follow", follow);
+      document.getElementById("instr-main").textContent = m.instruction;
+      document.getElementById("instr-sub").textContent =
+        `${Nav.formatMi(m.length_mi)} on this leg · ${Nav.formatMi(m.remain_mi_after)} left after` +
+        (m.revisit ? " · revisit" : "");
+      document.getElementById("step-label").textContent = `${idx + 1} / ${maneuvers.length}`;
+      document.getElementById("btn-prev").disabled = idx <= 0;
+      document.getElementById("btn-next").disabled = idx >= maneuvers.length - 1;
+      document.getElementById("ring-label").textContent = m.name || "street ahead";
+
+      const latlngs = (m.coords || []).map((c) => [c[1], c[0]]);
+      aheadLine.setLatLngs(latlngs);
+
+      // Peek previous + next for context
+      const peek = [];
+      for (let j = Math.max(0, idx - 1); j <= Math.min(maneuvers.length - 1, idx + 2); j++) {
+        for (const c of maneuvers[j].coords || []) peek.push([c[1], c[0]]);
+      }
+
+      const center = m.at ? [m.at[1], m.at[0]] : latlngs[0];
+      if (center) {
+        if (opts.fit && peek.length) {
+          map.fitBounds(peek, { padding: [28, 28], maxZoom: 18 });
+        } else {
+          map.setView(center, Math.max(map.getZoom(), 17), { animate: true });
+        }
+      }
+
+      // Rotate glyph to suggest turn relative to approach (north-up map)
+      const glyph = document.getElementById("turn-glyph");
+      const rot =
+        m.turn.kind === "left" || m.turn.kind === "slight-left" || m.turn.kind === "sharp-left"
+          ? -35
+          : m.turn.kind === "right" || m.turn.kind === "slight-right" || m.turn.kind === "sharp-right"
+            ? 35
+            : m.turn.kind === "uturn"
+              ? 180
+              : 0;
+      glyph.style.transform = `rotate(${rot}deg)`;
+    }
+
+    function onPosition(pos) {
+      const { latitude: lat, longitude: lon, heading, accuracy } = pos.coords;
+      if (heading != null && !Number.isNaN(heading)) userHeading = heading;
+
+      ensureMap();
+      youMarker.setLatLng([lat, lon]).addTo(map);
+      if (userHeading != null) {
+        headingMarker.setLatLng([lat, lon]).addTo(map);
+        const wedge = document.getElementById("wedge");
+        if (wedge) wedge.style.transform = `rotate(${userHeading}deg)`;
+      }
+
+      const snap = Nav.snapToRoute(maneuvers, lon, lat);
+      const near = graph ? Nav.nearestStreetName(graph, lon, lat, 50) : null;
+
+      if (!snap) {
+        setStatus(
+          near
+            ? `Near ${near.name} (${Math.round(near.dist)} m) — off saved route`
+            : `GPS ok (±${Math.round(accuracy || 0)} m) — off route`,
+          true
+        );
+        map.setView([lat, lon], Math.max(map.getZoom(), 17));
+        return;
+      }
+
+      // Advance when close to start of upcoming maneuver / far along current
+      let nextIdx = snap.maneuverIndex;
+      const m = maneuvers[nextIdx];
+      if (m?.at && Nav.haversineM([lon, lat], m.at) < 18 && nextIdx < maneuvers.length - 1) {
+        // approaching junction — keep current until we've clearly entered next
+      }
+      // If past midpoint toward end of leg and close to next junction, peek next instruction
+      const end = m.coords?.[m.coords.length - 1];
+      if (end && Nav.haversineM([lon, lat], end) < 28 && nextIdx < maneuvers.length - 1) {
+        nextIdx = nextIdx; // stay; show distance to turn using next man
+      }
+
+      if (follow) {
+        const cur = maneuvers[snap.maneuverIndex] || maneuvers[idx];
+        const legEnd = cur?.coords?.[cur.coords.length - 1];
+        const distLeg = legEnd ? Nav.haversineM([lon, lat], legEnd) : snap.dist;
+        const approachingTurn = distLeg < 45 && snap.maneuverIndex < maneuvers.length - 1;
+        const showIdx = approachingTurn ? snap.maneuverIndex + 1 : snap.maneuverIndex;
+
+        if (showIdx !== idx) showManeuver(showIdx, { fit: false });
+
+        const shown = maneuvers[idx];
+        if (approachingTurn) {
+          document.getElementById("instr-sub").textContent =
+            `In ${Nav.formatDist(distLeg)} · then ${Nav.formatMi(shown.length_mi)} on ${shown.name}`;
+        } else {
+          document.getElementById("instr-sub").textContent =
+            `${Nav.formatDist(distLeg)} to next junction · ${Nav.formatMi(cur.remain_mi_after)} left after` +
+            (near ? ` · ${near.name}` : "");
+        }
+        map.setView([lat, lon], Math.max(map.getZoom(), 18), { animate: true });
+      }
+
+      setStatus(
+        `Snapped ${Math.round(snap.dist)} m · ${near ? near.name : "on route"} · ±${Math.round(accuracy || 0)} m`
+      );
+    }
+
+    function startFollow() {
+      if (!navigator.geolocation) {
+        setStatus("Geolocation not available on this device.", true);
+        return;
+      }
+      follow = true;
+      document.getElementById("btn-follow").textContent = "Following…";
+      document.getElementById("turn-glyph").classList.add("follow");
+      watchId = navigator.geolocation.watchPosition(onPosition, (err) => {
+        setStatus(err.message || "GPS error", true);
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 12000
+      });
+      setStatus("Waiting for GPS…");
+    }
+
+    function stopFollow() {
+      follow = false;
+      document.getElementById("btn-follow").textContent = "Follow me";
+      document.getElementById("turn-glyph").classList.remove("follow");
+      if (watchId != null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+    }
+
+    document.getElementById("btn-prev").addEventListener("click", () => {
+      stopFollow();
+      showManeuver(idx - 1, { fit: true });
+    });
+    document.getElementById("btn-next").addEventListener("click", () => {
+      stopFollow();
+      showManeuver(idx + 1, { fit: true });
+    });
+    document.getElementById("btn-follow").addEventListener("click", () => {
+      if (follow) stopFollow();
+      else startFollow();
+    });
+    document.getElementById("btn-reload").addEventListener("click", () => {
+      stopFollow();
+      load();
+    });
+
+    window.addEventListener("storage", (ev) => {
+      if (ev.key === Nav.ROUTE_KEY) {
+        stopFollow();
+        load();
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>

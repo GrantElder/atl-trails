@@ -1,0 +1,66 @@
+# Directed road graph (reference)
+# Built in-browser by explore/graph.js after a boundary map query.
+# Built from explore/mapping.html (Chattanooga Mapping stage).
+
+meta:
+  mode: walk                 # walk | drive
+  snapMeters: 2
+  built: "2026-10-24T00:00:00.000Z"
+  note: >
+    Walk: every undirected segment expands to two directed edges.
+    Drive: OneWayCode F = along digitizing direction only, T = reverse only, B = both.
+    vehicle_one_way is always kept as metadata.
+    OPEN alleys are centerlined from ROW polygons, snapped to roads, kind=alley.
+
+stats:
+  nodes: 120
+  undirected: 200
+  directed: 400
+  splits: 35
+  oneWayVehicle: 3
+  alleys: 12
+  total_length_mi: 12.4
+
+nodes:
+  - id: n0
+    lon: -85.3291
+    lat: 34.9952
+
+edges:
+  - id: e0
+    from: n0
+    to: n1
+    undirected_id: u0
+    name: St Elmo Ave
+    objectId: 1466
+    kind: road               # road | alley
+    length_m: 95.1
+    length_ft: 312.0
+    length_mi: 0.0591
+    vehicle_one_way: B       # B | F | T (from MSAG match)
+    direction: along         # along | against digitizing / Shape coords
+    coords: [[-85.3291, 34.9952], [-85.3288, 34.9950]]
+    props:
+      FunctClass: Urban Minor Arterial
+      FeatureType: Major Road
+      StreetStatus: Open Public
+
+  - id: e1
+    from: n2
+    to: n3
+    undirected_id: u1
+    name: "Alley (38th St → 39th St)"
+    objectId: alley-0
+    kind: alley
+    length_m: 48.2
+    length_ft: 158.1
+    length_mi: 0.03
+    vehicle_one_way: B
+    direction: along
+    coords: [[-85.3300, 34.9940], [-85.3295, 34.9942]]
+    props:
+      FunctClass: Alley
+      FeatureType: Alley
+      StreetStatus: Open Alley
+      alley_from: 38th St
+      alley_to: 39th St

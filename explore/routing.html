@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chattanooga · Routing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink: #1c241c;
+      --moss: #2f4a34;
+      --clay: #c46a3a;
+      --chalk: #f3efe6;
+      --panel: rgba(243, 239, 230, 0.94);
+      --line: rgba(28, 36, 28, 0.14);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 500px at 0% 0%, #c8d6b8 0%, transparent 50%),
+        radial-gradient(800px 400px at 100% 10%, #e8c9a8 0%, transparent 45%),
+        linear-gradient(165deg, #eef2e8, #dfe6d6);
+    }
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+      min-height: 100dvh;
+    }
+    header { padding: 1rem 1.25rem 0.75rem; }
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .brand span { color: var(--moss); }
+    .lede {
+      margin: 0.35rem 0 0;
+      max-width: 48rem;
+      color: rgba(28, 36, 28, 0.75);
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(280px, 400px) 1fr;
+      gap: 0.85rem;
+      padding: 0 1rem 1rem;
+      min-height: 0;
+    }
+    @media (max-width: 900px) { .stage { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.9rem 1rem 1rem;
+      overflow: auto;
+      backdrop-filter: blur(8px);
+    }
+    .panel h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.05rem;
+      margin: 0.85rem 0 0.45rem;
+    }
+    .panel h2:first-child { margin-top: 0; }
+    .field { display: grid; gap: 0.28rem; margin-bottom: 0.6rem; }
+    .field label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: rgba(28, 36, 28, 0.6);
+    }
+    select, input[type="number"] {
+      font: inherit;
+      font-size: 0.92rem;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      width: 100%;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.4rem 0 0.7rem; }
+    .chip {
+      padding: 0.28rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(47, 74, 52, 0.1);
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.65rem 0; }
+    button {
+      font: inherit;
+      font-weight: 560;
+      font-size: 0.86rem;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.48rem 0.9rem;
+      cursor: pointer;
+      background: var(--moss);
+      color: var(--chalk);
+    }
+    button:hover { background: #243a28; }
+    button.secondary {
+      background: transparent;
+      color: var(--moss);
+      border: 1px solid rgba(47, 74, 52, 0.35);
+    }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    #status { font-size: 0.82rem; color: rgba(28, 36, 28, 0.72); min-height: 1.25em; }
+    #status.error { color: #8a2f1f; }
+    .hint {
+      font-size: 0.78rem;
+      line-height: 1.4;
+      color: rgba(28, 36, 28, 0.65);
+      margin: 0.4rem 0 0;
+    }
+    #revisit-list {
+      margin: 0.45rem 0 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.8rem;
+      max-height: 9rem;
+      overflow: auto;
+    }
+    #revisit-list li {
+      padding: 0.28rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .map-wrap {
+      min-height: 420px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 40px rgba(28, 36, 28, 0.12);
+      position: relative;
+    }
+    #map { height: 100%; min-height: 420px; }
+    .leaflet-container { background: #d5ddd0; font: inherit; }
+    .pick-banner {
+      position: absolute;
+      z-index: 500;
+      left: 50%;
+      top: 0.75rem;
+      transform: translateX(-50%);
+      background: rgba(28, 36, 28, 0.88);
+      color: var(--chalk);
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      display: none;
+    }
+    .pick-banner.on { display: block; }
+    .chip.ok { background: rgba(47, 74, 52, 0.18); }
+    .chip.warn { background: rgba(168, 66, 26, 0.16); }
+    .chip.muted { opacity: 0.7; }
+    .dial { margin: 0.35rem 0 0.5rem; }
+    .dial-row {
+      display: grid;
+      gap: 0.2rem;
+      margin-bottom: 0.45rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+    .dial-row span { display: flex; justify-content: space-between; gap: 0.5rem; }
+    .dial-row em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--moss); }
+    .dial-row input[type="range"] { width: 100%; accent-color: var(--moss); }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      margin: 0.65rem 0 0.35rem;
+      font-size: 0.82rem;
+    }
+    .flow-step {
+      padding: 0.28rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid rgba(47, 74, 52, 0.28);
+      color: var(--moss);
+      text-decoration: none;
+      background: rgba(243, 239, 230, 0.65);
+    }
+    .flow-step.on {
+      background: var(--moss);
+      color: var(--chalk);
+      border-color: transparent;
+      font-weight: 600;
+    }
+    .flow-step.dim { opacity: 0.45; pointer-events: none; }
+    .flow-sep { opacity: 0.45; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1 class="brand">Chattanooga <span>Routing</span></h1>
+      <nav class="flow" aria-label="Chattanooga walk stages">
+        <a class="flow-step" href="mapping.html">1 · Mapping</a>
+        <span class="flow-sep">→</span>
+        <span class="flow-step on">2 · Routing</span>
+        <span class="flow-sep">→</span>
+        <a class="flow-step dim" id="flow-nav" href="navigation.html" title="Generate a route first">3 · Navigation</a>
+      </nav>
+      <p class="lede" id="lede">
+        Build a route on the mapped network, then continue to Navigation.
+      </p>
+    </header>
+
+    <div class="stage">
+      <aside class="panel">
+        <h2>This area</h2>
+        <div class="meta" id="graph-meta">
+          <span class="chip">No map network loaded</span>
+        </div>
+        <p class="hint">If this is empty, go back to <a href="mapping.html">Mapping</a> and tap <strong>Next: Routing</strong>.</p>
+        <div class="actions">
+          <button type="button" class="secondary" id="btn-reload">Reload from map</button>
+        </div>
+
+        <h2>What to collect</h2>
+        <div class="field">
+          <label for="optimize-unit">Count progress by</label>
+          <select id="optimize-unit">
+            <option value="street" selected>Roadway miles (blocks you’ve walked)</option>
+            <option value="node">Intersections (corners you’ve hit)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="edge-mode">Same roadway, opposite way?</label>
+          <select id="edge-mode">
+            <option value="undirected" selected>Counts as already walked (usual)</option>
+            <option value="directed">Counts as new if you walk the other way</option>
+          </select>
+        </div>
+        <p class="hint" id="mode-hint"></p>
+
+        <h2>Start & finish</h2>
+        <div class="field">
+          <label for="trip-kind">Finish where?</label>
+          <select id="trip-kind">
+            <option value="roundtrip" selected>Loop — back where you started</option>
+            <option value="point">Point to point — pick an end</option>
+            <option value="open">Open — end wherever the walk runs out</option>
+          </select>
+        </div>
+        <p class="hint" id="trip-hint"></p>
+        <div class="row">
+          <div class="field">
+            <label>Start</label>
+            <button type="button" class="secondary" id="btn-pick-start" style="width:100%">Pick on map…</button>
+            <div class="hint" id="start-label">not set</div>
+          </div>
+          <div class="field" id="end-field">
+            <label>End</label>
+            <button type="button" class="secondary" id="btn-pick-end" style="width:100%">Pick on map…</button>
+            <div class="hint" id="end-label">not set</div>
+          </div>
+        </div>
+        <div class="hint" id="finish-echo" style="margin-top:0.15rem"></div>
+
+        <h2>What kind of walk</h2>
+        <div class="field">
+          <label for="goal">Goal</label>
+          <select id="goal">
+            <option value="cover100" selected>Walk every roadway (full area, ~network miles)</option>
+            <option value="max">As many new miles as possible (no rewalking)</option>
+            <option value="target">About a set mileage (no rewalking)</option>
+          </select>
+        </div>
+        <div class="field" id="target-field" hidden>
+          <label for="target-mi">About how many miles?</label>
+          <input id="target-mi" type="number" min="0.2" max="40" step="0.1" value="3.5" />
+        </div>
+        <p class="hint" id="goal-hint"></p>
+
+        <div id="tweak-panel" hidden>
+          <h2>Not quite right? Tweak &amp; regenerate</h2>
+          <p class="hint" id="prefs-hint">
+            Something feel off? Nudge these and regenerate. (Only for “as many miles” / “about N miles” — not full coverage.)
+          </p>
+          <div class="dial" id="prefs-box">
+            <label class="dial-row">
+              <span>Fewer turns <em id="v-fewTurns">60</em></span>
+              <input type="range" id="pref-fewTurns" min="0" max="100" value="60" />
+            </label>
+            <label class="dial-row">
+              <span>Longer blocks <em id="v-longBlocks">50</em></span>
+              <input type="range" id="pref-longBlocks" min="0" max="100" value="50" />
+            </label>
+            <label class="dial-row">
+              <span>Coverage hunger <em id="v-coverageHunger">55</em></span>
+              <input type="range" id="pref-coverageHunger" min="0" max="100" value="55" />
+            </label>
+            <label class="dial-row">
+              <span>Search effort <em id="v-searchEffort">50</em></span>
+              <input type="range" id="pref-searchEffort" min="0" max="100" value="50" />
+            </label>
+            <label class="dial-row">
+              <span>Variety <em id="v-variety">35</em></span>
+              <input type="range" id="pref-variety" min="0" max="100" value="35" />
+            </label>
+            <button type="button" class="secondary" id="btn-prefs-reset" style="margin-top:0.35rem">Reset dials</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="btn-run">Generate route</button>
+          <button type="button" id="btn-nav" disabled>Next: Navigation →</button>
+          <button type="button" class="secondary" id="btn-clear">Clear route</button>
+        </div>
+        <div id="status">Pick a start on the map, then generate a route.</div>
+
+        <h2>Result</h2>
+        <div class="meta">
+          <span class="chip">Walked <strong id="r-mi">—</strong> mi</span>
+          <span class="chip">New roadway <strong id="r-unique">—</strong> mi</span>
+          <span class="chip">Intersections <strong id="r-nodes">—</strong></span>
+          <span class="chip">Coverage <strong id="r-cov">—</strong></span>
+          <span class="chip">Rewalks <strong id="r-rev">—</strong></span>
+          <span class="chip" id="r-finish-chip">Finish <strong id="r-finish">—</strong></span>
+          <span class="chip">Turns <strong id="r-turns">—</strong></span>
+        </div>
+        <p class="hint" id="result-note"></p>
+        <ul id="revisit-list"></ul>
+      </aside>
+
+      <div class="map-wrap">
+        <div class="pick-banner" id="pick-banner">Tap an intersection on the map</div>
+        <div id="map"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="places.js"></script>
+  <script src="routing.js"></script>
+  <script src="navigate.js"></script>
+  <script>
+    const map = L.map("map", { zoomControl: true }).setView([34.995, -85.329], 14);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
+    }).addTo(map);
+
+    const baseEdges = L.layerGroup().addTo(map);
+    const routeLayer = L.layerGroup().addTo(map);
+    const markerLayer = L.layerGroup().addTo(map);
+
+    let envelope = null;
+    let graph = null;
+    let startId = null;
+    let endId = null;
+    let pickMode = null;
+    let lastRoute = null;
+
+    const statusEl = document.getElementById("status");
+    const pickBanner = document.getElementById("pick-banner");
+    const tripKindEl = document.getElementById("trip-kind");
+    const goalEl = document.getElementById("goal");
+    const optimizeEl = document.getElementById("optimize-unit");
+    const edgeModeEl = document.getElementById("edge-mode");
+    const targetField = document.getElementById("target-field");
+    const endField = document.getElementById("end-field");
+    const goalHint = document.getElementById("goal-hint");
+    const modeHint = document.getElementById("mode-hint");
+    const tripHint = document.getElementById("trip-hint");
+    const finishEcho = document.getElementById("finish-echo");
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function nodeById(id) {
+      return (graph?.nodes || []).find((n) => n.id === id) || null;
+    }
+
+    function syncTripUi() {
+      const kind = tripKindEl.value;
+      const goal = goalEl.value;
+      const unit = optimizeEl.value;
+      const needEnd = kind === "point";
+      endField.hidden = !needEnd;
+      document.getElementById("btn-pick-end").disabled = !needEnd;
+      targetField.hidden = goal !== "target";
+
+      if (kind === "roundtrip") {
+        tripHint.textContent =
+          "You’ll end at the same intersection you started. A dashed green leg may rewalk a bit to get home.";
+      } else if (kind === "point") {
+        tripHint.textContent =
+          "Pick start and end on the map. The route will finish at your end (may rewalk a short finish leg).";
+      } else {
+        tripHint.textContent =
+          "No fixed finish — the walk ends when it runs out of new roadways to take.";
+      }
+
+      const sLabel = startId ? Places.shortLabel(graph, startId) : null;
+      const eLabel = endId ? Places.shortLabel(graph, endId) : null;
+      if (kind === "roundtrip") {
+        finishEcho.textContent = sLabel
+          ? `Loop starts & ends at ${sLabel}.`
+          : "Pick a start intersection on the map.";
+      } else if (kind === "point") {
+        finishEcho.textContent =
+          sLabel && eLabel
+            ? `${sLabel} → ${eLabel}`
+            : "Pick both a start and an end on the map.";
+      } else {
+        finishEcho.textContent = sLabel
+          ? `Starts at ${sLabel}.`
+          : "Pick a start intersection on the map.";
+      }
+
+      // Cover-all is a street problem; force street uniqueness when selected
+      const coverOpt = goalEl.querySelector('option[value="cover100"]');
+      if (coverOpt) {
+        coverOpt.disabled = unit === "node";
+        if (unit === "node" && goal === "cover100") {
+          goalEl.value = "max";
+        }
+      }
+
+      modeHint.textContent =
+        edgeModeEl.value === "undirected"
+          ? "Once you’ve walked a block either way, that roadway is done. Best for walking."
+          : "Walking the block the other way counts as new. Rarely useful here.";
+
+      if (goalEl.value === "cover100") {
+        goalHint.textContent =
+          "Covers every reachable roadway at least once with as little extra walking as possible. Best for a full neighborhood sweep. Then continue to Navigation.";
+      } else if (goalEl.value === "max") {
+        goalHint.textContent =
+          unit === "node"
+            ? "Visit as many intersections as you can without rewalking roadways."
+            : "Cover as many new roadway miles as you can without rewalking. For the whole area, choose “every roadway” instead.";
+      } else {
+        goalHint.textContent =
+          "Aim for about your mileage without rewalking.";
+      }
+
+      syncTweakPanel();
+    }
+
+    function placeLabel(id) {
+      if (!id || !graph) return "not set";
+      return Places.shortLabel(graph, id);
+    }
+
+    function syncNavStep(enabled) {
+      const nav = document.getElementById("flow-nav");
+      nav.classList.toggle("dim", !enabled);
+      nav.title = enabled ? "Open Navigation" : "Generate a route first";
+      document.getElementById("btn-nav").disabled = !enabled;
+    }
+
+    function syncTweakPanel() {
+      const panel = document.getElementById("tweak-panel");
+      const runBtn = document.getElementById("btn-run");
+      const hasRoute = Boolean(lastRoute?.ok);
+      panel.hidden = !hasRoute;
+      runBtn.textContent = hasRoute ? "Regenerate route" : "Generate route";
+
+      if (!hasRoute) return;
+
+      const prefsBox = document.getElementById("prefs-box");
+      const prefsHint = document.getElementById("prefs-hint");
+      const dialsOn = goalEl.value !== "cover100";
+      prefsBox.style.opacity = dialsOn ? "1" : "0.45";
+      prefsBox.querySelectorAll("input").forEach((el) => {
+        el.disabled = !dialsOn;
+      });
+      document.getElementById("btn-prefs-reset").disabled = !dialsOn;
+      prefsHint.textContent = dialsOn
+        ? "Adjust what bothered you, then regenerate. Raise Fewer turns for a calmer path."
+        : "Full coverage is already length-optimal — switch goal to “as many miles” or “about N miles” if you want to fudge the feel.";
+    }
+
+    const PREF_KEYS = ["fewTurns", "longBlocks", "coverageHunger", "searchEffort", "variety"];
+    const PREF_DEFAULTS = { fewTurns: 60, longBlocks: 50, coverageHunger: 55, searchEffort: 50, variety: 35 };
+
+    function readPrefs() {
+      const raw = {};
+      for (const k of PREF_KEYS) {
+        raw[k] = Number(document.getElementById("pref-" + k).value);
+      }
+      return Routing.normalizePrefs(raw);
+    }
+
+    function syncPrefLabels() {
+      for (const k of PREF_KEYS) {
+        const el = document.getElementById("pref-" + k);
+        const lab = document.getElementById("v-" + k);
+        if (el && lab) lab.textContent = el.value;
+      }
+    }
+
+    function resetPrefs() {
+      for (const k of PREF_KEYS) {
+        document.getElementById("pref-" + k).value = PREF_DEFAULTS[k];
+      }
+      syncPrefLabels();
+    }
+
+    function renderGraphMeta() {
+      const box = document.getElementById("graph-meta");
+      if (!graph) {
+        box.innerHTML = '<span class="chip">No graph loaded</span>';
+        return;
+      }
+      const s = graph.stats || {};
+      const area = envelope?.areaName || "graph";
+      const net = s.total_length_mi ?? Routing.networkMiles(graph, "undirected");
+      const alleyN =
+        s.alleys ??
+        (graph.undirected || []).filter((u) => u.kind === "alley").length;
+      box.innerHTML = `
+        <span class="chip">${area}</span>
+        <span class="chip">Intersections <strong>${s.nodes ?? graph.nodes.length}</strong></span>
+        <span class="chip">Roadways <strong>${s.undirected ?? (graph.undirected || []).length}</strong></span>
+        <span class="chip">Alleys <strong>${alleyN}</strong></span>
+        <span class="chip">Network <strong>${net}</strong> mi</span>
+      `;
+      document.getElementById("lede").textContent =
+        `Planning “${area}” · ${net} mi of roadways. Alleys show dashed brown.`;
+    }
+
+    function streetStyle(e, { used = false, revisit = false } = {}) {
+      const alley = e.kind === "alley";
+      if (revisit) {
+        return {
+          color: alley ? "#8a3d18" : "#a8421a",
+          weight: alley ? 5.5 : 5,
+          opacity: 0.95,
+          dashArray: alley ? "8 5" : null
+        };
+      }
+      if (used) {
+        return {
+          color: alley ? "#8a5a2b" : "#1a4d6d",
+          weight: alley ? 4.5 : 4,
+          opacity: 0.95,
+          dashArray: alley ? "8 5" : null
+        };
+      }
+      return {
+        color: alley ? "#a67c52" : "#6b7d68",
+        weight: alley ? 2.6 : 2,
+        opacity: alley ? 0.55 : 0.35,
+        dashArray: alley ? "6 4" : null
+      };
+    }
+
+    function drawBaseNetwork() {
+      baseEdges.clearLayers();
+      if (!graph) return;
+      const streets = graph.undirected?.length ? graph.undirected : graph.edges;
+      for (const e of streets) {
+        if (!e.coords?.length) continue;
+        const line = L.polyline(e.coords.map((c) => [c[1], c[0]]), streetStyle(e));
+        const alley = e.kind === "alley" ? " · alley" : "";
+        line.bindTooltip(`${e.name || e.id}${alley}`, { sticky: true, opacity: 0.9 });
+        line.addTo(baseEdges);
+      }
+      const bounds = (graph.nodes || []).map((n) => [n.lat, n.lon]);
+      if (bounds.length) map.fitBounds(bounds, { padding: [36, 36] });
+    }
+
+    function drawMarkers(route) {
+      markerLayer.clearLayers();
+      const kind = tripKindEl.value;
+      const s = nodeById(startId);
+      if (s) {
+        const loop = kind === "roundtrip";
+        L.circleMarker([s.lat, s.lon], {
+          radius: loop ? 10 : 8,
+          color: "#2f4a34",
+          weight: 2,
+          fillColor: "#5f8a4b",
+          fillOpacity: 1
+        })
+          .bindTooltip(loop ? "Start & finish · " + placeLabel(startId) : "Start · " + placeLabel(startId))
+          .addTo(markerLayer);
+      }
+      const e = nodeById(endId);
+      if (e && kind === "point") {
+        L.circleMarker([e.lat, e.lon], {
+          radius: 8, color: "#a8421a", weight: 2, fillColor: "#c46a3a", fillOpacity: 1
+        }).bindTooltip("End · " + placeLabel(endId)).addTo(markerLayer);
+      }
+      if (route?.ok && route.endNodeId) {
+        const fin = nodeById(route.endNodeId);
+        const sameAsStart = route.endNodeId === startId;
+        if (fin && !(kind === "roundtrip" && sameAsStart) && !(kind === "point" && route.endNodeId === endId)) {
+          L.circleMarker([fin.lat, fin.lon], {
+            radius: 7, color: "#5a3a18", weight: 2, fillColor: "#e0b060", fillOpacity: 1
+          }).bindTooltip("Finished · " + placeLabel(route.endNodeId)).addTo(markerLayer);
+        } else if (fin && kind === "open") {
+          L.circleMarker([fin.lat, fin.lon], {
+            radius: 7, color: "#5a3a18", weight: 2, fillColor: "#e0b060", fillOpacity: 1
+          }).bindTooltip("Finished · " + placeLabel(route.endNodeId)).addTo(markerLayer);
+        }
+      }
+      document.getElementById("start-label").textContent = startId ? placeLabel(startId) : "not set";
+      document.getElementById("end-label").textContent = endId ? placeLabel(endId) : "not set";
+      syncTripUi();
+    }
+
+    function drawRoute(route) {
+      routeLayer.clearLayers();
+      if (!route?.ok) return;
+
+      const revisitIds = new Set((route.revisited || []).map((r) => r.id));
+      const usedStreet = new Set((route.steps || []).map((s) => s.undirected_id || s.edgeId));
+
+      baseEdges.clearLayers();
+      const streets = graph.undirected?.length ? graph.undirected : graph.edges;
+      for (const e of streets) {
+        if (!e.coords?.length) continue;
+        const isUsed = usedStreet.has(e.id);
+        const isRev = revisitIds.has(e.id);
+        const line = L.polyline(
+          e.coords.map((c) => [c[1], c[0]]),
+          streetStyle(e, { used: isUsed, revisit: isRev })
+        );
+        const alley = e.kind === "alley" ? " · alley" : "";
+        const tag = isRev ? " · revisited" : isUsed ? " · on route" : "";
+        line.bindTooltip(`${e.name || e.id}${alley}${tag}`, { sticky: true, opacity: 0.9 });
+        line.addTo(baseEdges);
+      }
+
+      // Main path (non-closure) vs return/finish leg
+      const mainCoords = [];
+      const closureCoords = [];
+      for (const step of route.steps || []) {
+        const ll = (step.coords || []).map((c) => [c[1], c[0]]);
+        if (!ll.length) continue;
+        if (step.closure) {
+          if (closureCoords.length && ll.length) closureCoords.push(...ll.slice(1));
+          else closureCoords.push(...ll);
+        } else {
+          if (mainCoords.length && ll.length) mainCoords.push(...ll.slice(1));
+          else mainCoords.push(...ll);
+        }
+      }
+      if (mainCoords.length) {
+        L.polyline(mainCoords, { color: "#c46a3a", weight: 5, opacity: 0.9 }).addTo(routeLayer);
+      } else if (route.coords?.length) {
+        L.polyline(route.coords.map((c) => [c[1], c[0]]), {
+          color: "#c46a3a", weight: 5, opacity: 0.85
+        }).addTo(routeLayer);
+      }
+      if (closureCoords.length) {
+        L.polyline(closureCoords, {
+          color: "#2f4a34",
+          weight: 5,
+          opacity: 0.95,
+          dashArray: "10 7"
+        })
+          .bindTooltip("Return / finish leg (may rewalk)")
+          .addTo(routeLayer);
+      }
+
+      // Emphasize visited junctions when optimizing intersections
+      if (route.optimizeUnit === "node" && route.visited_node_ids?.length) {
+        const visited = new Set(route.visited_node_ids);
+        for (const n of graph.nodes || []) {
+          if (!visited.has(n.id)) continue;
+          L.circleMarker([n.lat, n.lon], {
+            radius: 4,
+            color: "#2f4a34",
+            weight: 1,
+            fillColor: "#c4a35a",
+            fillOpacity: 0.9
+          }).addTo(routeLayer);
+        }
+      }
+
+      drawMarkers(route);
+
+      if (route.coords.length) {
+        map.fitBounds(L.latLngBounds(route.coords.map((c) => [c[1], c[0]])), { padding: [40, 40] });
+      }
+    }
+
+    function showRouteStats(route) {
+      document.getElementById("r-mi").textContent = route?.ok ? String(route.length_mi) : "—";
+      document.getElementById("r-unique").textContent = route?.ok ? String(route.unique_mi) : "—";
+      document.getElementById("r-nodes").textContent = route?.ok
+        ? `${route.unique_nodes ?? "—"} / ${route.total_nodes ?? "—"}`
+        : "—";
+      document.getElementById("r-cov").textContent = route?.ok ? `${route.coverage}%` : "—";
+      document.getElementById("r-rev").textContent = route?.ok
+        ? String((route.revisited || []).length)
+        : "—";
+      document.getElementById("r-turns").textContent = route?.ok
+        ? String(route.turn_count ?? Routing.countMeaningfulTurns(route.steps || []))
+        : "—";
+
+      const finishEl = document.getElementById("r-finish");
+      const finishChip = document.getElementById("r-finish-chip");
+      finishChip.classList.remove("ok", "warn", "muted");
+      if (!route?.ok) {
+        finishEl.textContent = "—";
+      } else if (route.returns_to_start || (route.trip_closed && route.closed_ok)) {
+        finishEl.textContent = "back at start ✓";
+        finishChip.classList.add("ok");
+      } else if (route.closed_ok && route.goal_node_id) {
+        finishEl.textContent = placeLabel(route.endNodeId) + " ✓";
+        finishChip.classList.add("ok");
+      } else if (tripKindEl.value === "open") {
+        finishEl.textContent = placeLabel(route.endNodeId);
+        finishChip.classList.add("muted");
+      } else {
+        finishEl.textContent = "not at planned finish";
+        finishChip.classList.add("warn");
+      }
+
+      const list = document.getElementById("revisit-list");
+      list.innerHTML = "";
+      if (route?.ok && route.revisited?.length) {
+        for (const r of route.revisited) {
+          const li = document.createElement("li");
+          const alley = r.kind === "alley" ? " [alley]" : "";
+          li.textContent = `${r.name || r.id}${alley} · walked ${r.times}× · ${r.length_mi} mi each`;
+          list.appendChild(li);
+        }
+      }
+
+      if (!route?.ok) {
+        document.getElementById("result-note").textContent = route?.message || "";
+        return;
+      }
+      const opt = route.optimal ? "Optimal for this goal." : "Approximate — not guaranteed best.";
+      const roadBit = `new roadway ${route.unique_mi} of ${route.network_mi} mi (${route.street_coverage ?? route.coverage}%)`;
+      const nodeBit = `intersections ${route.unique_nodes}/${route.total_nodes} (${route.node_coverage ?? 0}%)`;
+      const primary =
+        route.optimizeUnit === "node"
+          ? `Focus: ${nodeBit}. Also ${roadBit}.`
+          : `Focus: ${roadBit}. Also ${nodeBit}.`;
+      const closeBit =
+        route.closure_mi > 0
+          ? ` Return/finish ${route.closure_mi} mi (dashed green).`
+          : route.returns_to_start
+            ? " Ends at start."
+            : "";
+      const turns = route.turn_count ?? Routing.countMeaningfulTurns(route.steps || []);
+      document.getElementById("result-note").textContent =
+        `${opt} Walked ${route.length_mi} mi · ~${turns} turns. ${primary}${closeBit}`;
+    }
+
+    function loadEnvelope(env) {
+      envelope = env;
+      graph = env?.graph || null;
+      startId = endId = null;
+      lastRoute = null;
+      routeLayer.clearLayers();
+      renderGraphMeta();
+      drawBaseNetwork();
+      drawMarkers();
+      showRouteStats(null);
+      const savedNav = Nav.loadNav();
+      if (savedNav?.route?.ok) {
+        lastRoute = savedNav.route;
+        syncNavStep(true);
+      } else {
+        syncNavStep(false);
+      }
+      syncTweakPanel();
+      if (!graph) {
+        setStatus("No network yet — go to Mapping and tap Next: Routing.", true);
+        return;
+      }
+      setStatus(
+        lastRoute
+          ? "Network ready. A saved route is available — Next: Navigation, or regenerate with tweaks."
+          : "Network ready. Pick a start intersection, then generate."
+      );
+    }
+
+    function beginPick(mode) {
+      if (!graph) {
+        setStatus("Load a network from Mapping first.", true);
+        return;
+      }
+      pickMode = mode;
+      pickBanner.textContent =
+        mode === "start" ? "Tap the map for START" : "Tap the map for END";
+      pickBanner.classList.add("on");
+    }
+
+    map.on("click", (ev) => {
+      if (!pickMode || !graph) return;
+      const hit = Routing.nearestNode(graph, ev.latlng.lng, ev.latlng.lat);
+      if (!hit || hit.d > 80) {
+        setStatus("No intersection nearby — zoom in on a corner.", true);
+        return;
+      }
+      const role = pickMode;
+      if (role === "start") startId = hit.node.id;
+      else endId = hit.node.id;
+      pickMode = null;
+      pickBanner.classList.remove("on");
+      drawMarkers();
+      setStatus(
+        (role === "start" ? "Start: " : "End: ") + Places.shortLabel(graph, hit.node.id)
+      );
+    });
+
+    document.getElementById("btn-pick-start").addEventListener("click", () => beginPick("start"));
+    document.getElementById("btn-pick-end").addEventListener("click", () => beginPick("end"));
+    tripKindEl.addEventListener("change", syncTripUi);
+    goalEl.addEventListener("change", syncTripUi);
+    optimizeEl.addEventListener("change", syncTripUi);
+    edgeModeEl.addEventListener("change", syncTripUi);
+    for (const k of PREF_KEYS) {
+      document.getElementById("pref-" + k).addEventListener("input", syncPrefLabels);
+    }
+    document.getElementById("btn-prefs-reset").addEventListener("click", resetPrefs);
+    syncPrefLabels();
+
+    document.getElementById("btn-reload").addEventListener("click", () => {
+      loadEnvelope(Routing.loadGraph());
+    });
+
+    window.addEventListener("storage", (ev) => {
+      if (ev.key === Routing.STORAGE_KEY) loadEnvelope(Routing.loadGraph());
+    });
+
+    document.getElementById("btn-clear").addEventListener("click", () => {
+      lastRoute = null;
+      syncNavStep(false);
+      syncTweakPanel();
+      routeLayer.clearLayers();
+      drawBaseNetwork();
+      showRouteStats(null);
+      setStatus("Route cleared.");
+    });
+
+    document.getElementById("flow-nav").addEventListener("click", (ev) => {
+      if (document.getElementById("flow-nav").classList.contains("dim")) {
+        ev.preventDefault();
+        setStatus("Generate a route first, then continue to Navigation.", true);
+      }
+    });
+
+    document.getElementById("btn-nav").addEventListener("click", () => {
+      if (!lastRoute?.ok) {
+        setStatus("Generate a route first.", true);
+        return;
+      }
+      try {
+        Nav.saveNav({
+          areaName: envelope?.areaName || "route",
+          graphMode: envelope?.graphMode || null,
+          edgeMode: edgeModeEl.value,
+          goal: goalEl.value,
+          route: lastRoute,
+          graphRef: Routing.STORAGE_KEY
+        });
+        syncNavStep(true);
+        window.location.href = "navigation.html";
+      } catch (err) {
+        setStatus(`Could not save route for navigation: ${err.message}`, true);
+      }
+    });
+
+    document.getElementById("btn-run").addEventListener("click", () => {
+      if (!graph) {
+        setStatus("No graph loaded.", true);
+        return;
+      }
+      if (!startId) {
+        setStatus("Set a start point.", true);
+        return;
+      }
+      const kind = tripKindEl.value;
+      if (kind === "point" && !endId) {
+        setStatus("Set an end point.", true);
+        return;
+      }
+      const goal = goalEl.value;
+      const optimizeUnit = optimizeEl.value;
+      const targetMi = Number(document.getElementById("target-mi").value);
+      if (goal === "target" && !(targetMi > 0)) {
+        setStatus("Enter a target mileage.", true);
+        return;
+      }
+      if (goal === "cover100" && optimizeUnit === "node") {
+        setStatus("“Every roadway” needs progress counted by roadway miles, not intersections.", true);
+        return;
+      }
+
+      const btn = document.getElementById("btn-run");
+      btn.disabled = true;
+      setStatus("Computing…");
+      setTimeout(() => {
+        try {
+          const route = Routing.run(graph, edgeModeEl.value, {
+            goal,
+            optimizeUnit,
+            startId,
+            endId: kind === "point" ? endId : null,
+            closed: kind === "roundtrip",
+            tripKind: kind,
+            targetMi: goal === "target" ? targetMi : null,
+            prefs: readPrefs()
+          });
+          lastRoute = route;
+          syncNavStep(Boolean(route.ok));
+          syncTweakPanel();
+          drawRoute(route);
+          showRouteStats(route);
+          const covLabel =
+            route.optimizeUnit === "node"
+              ? `${route.unique_nodes}/${route.total_nodes} intersections`
+              : `${route.street_coverage ?? route.coverage}% roadway miles (${route.unique_mi}/${route.network_mi} new)`;
+          setStatus(
+            route.ok
+              ? `Ready · ${route.length_mi} mi · ${covLabel} · tweak below or Next: Navigation`
+              : (route.message || "Failed"),
+            !route.ok
+          );
+        } catch (err) {
+          console.error(err);
+          setStatus(err.message, true);
+        } finally {
+          btn.disabled = false;
+        }
+      }, 20);
+    });
+
+    syncTripUi();
+    loadEnvelope(Routing.loadGraph());
+  </script>
+</body>
+</html>
